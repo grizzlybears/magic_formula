@@ -1,0 +1,122 @@
+#!/usr/bin/python2 -S
+# -*- coding: utf-8 -*-
+import sys
+reload(sys)
+sys.setdefaultencoding("utf-8")
+
+import site
+import traceback
+import codecs
+import os
+import sqlite3
+#import pprint
+import subprocess
+
+
+import  jqdatasdk as jq
+import  pandas as pd
+
+import db_operator
+import data_struct 
+import jq_acc
+
+MY_NAME='mf'
+
+# 工具入口
+
+def print_usage( argv0 = MY_NAME ):
+    print "Usage:"
+
+
+def query_financial_statement():
+    # 查询平安银行2014年的年报
+    q = jq.query(
+          jq.income.statDate,
+          jq.income.code,
+          jq.income.basic_eps,
+          jq.cash_flow.goods_sale_and_service_render_cash
+          ).filter(
+                  jq.income.code == '000001.XSHE',
+                  )
+
+    ret = jq.get_fundamentals(q, statDate='2014')
+
+    print ret
+ 
+def list_all_sec():
+    r = jq.get_all_securities()
+
+    #pd.set_option('display.max_rows', len(r))
+    print r
+    #pd.reset_option('display.max_rows')
+
+
+# 处理 'list' 子命令
+def handle_list( argv, argv0 = MY_NAME ): 
+    try:
+        # connect to DB 
+        conn = db_operator.get_db_conn()
+        dbcur = conn.cursor()
+
+        # real stuff
+        list_all_sec()
+        
+        # DB clean up
+        conn.commit()
+
+    except  Exception as e:
+        
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        dbcur.close()
+        conn.close()
+
+    return 0
+
+
+def make_sure_working_dir():
+    r = subprocess.call([ "mkdir"
+            , "-p"
+            , data_struct.WORKING_DIR 
+            ])
+
+    if 0 != r:
+        raise Exception("Failed to make '%s'" % data_struct.WORKING_DIR );
+
+
+def main(): 
+    
+    i = len(sys.argv)
+    if ( i < 2 ):
+        print_usage()
+        return 1
+
+    jq.auth(jq_acc.JQ_USERNAME ,jq_acc.JQ_PASSWORD )
+
+    make_sure_working_dir()
+
+    sub_command = sys.argv[1]
+
+    if ('import' == sub_command ):
+        return handle_import ( sys.argv[2:] )  
+    elif ('list' == sub_command ):
+        return handle_list ( sys.argv[2:] )  
+    elif ('help' == sub_command ):
+        print_usage()
+        return 1
+    else:
+        print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
+        print_usage()
+        return 1
+  
+    return 0
+
+if __name__ == "__main__":
+    r = main()
+    sys.exit(r)
+
+

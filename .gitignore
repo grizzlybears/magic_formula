@@ -1,0 +1,10 @@
+*.pyc
+*.swp
+working_dir/*.html
+working_dir/*.db
+working_dir/*.js
+working_dir/*.gz
+test_data/*.utf8
+
+
+
