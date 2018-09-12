@@ -42,10 +42,22 @@ def query_financial_statement():
     ret = jq.get_fundamentals(q, statDate='2014')
 
     print ret
- 
-def list_all_sec():
-    r = jq.get_all_securities()
 
+def query_financial_statement2():
+    # 查询平安银行2014年的资产负债表
+    q = jq.query(
+          jq.balance
+          ).filter(
+                  jq.balance.code== '000001.XSHE',
+                  )
+
+    ret = jq.get_fundamentals(q, statDate='2014')
+
+    print ret
+  
+def list_all_sec():
+    #r = jq.get_all_securities()
+    r = query_financial_statement2()
     #pd.set_option('display.max_rows', len(r))
     print r
     #pd.reset_option('display.max_rows')
