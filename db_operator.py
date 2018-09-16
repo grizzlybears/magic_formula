@@ -8,10 +8,18 @@ import subprocess
 
 import data_struct 
 
+import  pandas as pd
+from   sqlalchemy import create_engine
+
+# 打开DB，返回 sqlalchemy 的 db engine 
+def get_db_engine():
+    engine = create_engine( "sqlite:///%s" % data_struct.DB_PATH, echo=True)
+    return engine 
+
 
  # 打开DB，并酌情建表，返回 sqlite3.Connection
 def get_db_conn():
-    conn = sqlite3.connect( data_struct.DB_PATH)
+    conn = sqlite3.connect( data_struct.DB_PATH )
     conn.text_factory = str
  
     sql = ''' CREATE TABLE IF NOT EXISTS BalanceSheetDay (
@@ -54,11 +62,13 @@ def get_db_conn():
        , development_expenditure             NUMERIC
        , good_will                           NUMERIC
        , long_deferred_expense               NUMERIC
+       , deferred_tax_assets                 NUMERIC
        , other_non_current_assets            NUMERIC
        , total_non_current_assets            NUMERIC
        , total_assets                        NUMERIC
        , shortterm_loan                      NUMERIC
        , borrowing_from_centralbank          NUMERIC
+       , deposit_in_interbank                NUMERIC
        , borrowing_capital                   NUMERIC
        , trading_liability    NUMERIC
        , notes_payable        NUMERIC 
@@ -86,6 +96,7 @@ def get_db_conn():
        , deferred_tax_liability     NUMERIC 
        , other_non_current_liability NUMERIC 
        , total_non_current_liability NUMERIC
+       , total_liability    NUMERIC
        , paidin_capital     NUMERIC
        , capital_reserve_fund NUMERIC 
        , treasury_stock       NUMERIC 
@@ -130,6 +141,22 @@ def save_sec_info_to_db_if_not_exists( dbcur, info):
                  '''
                 , ( info.code , info.name  , info.dirpath , info.code       )
                 )
+
+    
+def save_balance_df_to_db(engine, dataframe ):
+    #pd.set_option('display.max_columns', 200)
+
+    a = dataframe.drop( 'statDate.1' ,  axis =1 )  # 这列表里没有
+
+    #pd.reset_option('display.max_columns')
+
+
+    a.to_sql( 'BalanceSheetDay', con = engine , index=False, if_exists='append')
+
+
+def save_df_to_db_table(engine, dataframe, tablename ):
+    dataframe.to_sql( tablename, con = engine , if_exists='append')
+
 
 
 
