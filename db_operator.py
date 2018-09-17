@@ -11,19 +11,40 @@ import data_struct
 import  pandas as pd
 from   sqlalchemy import create_engine
 
+import to_sql_newrows as nr
+
+
 # 打开DB，返回 sqlalchemy 的 db engine 
 def get_db_engine():
     engine = create_engine( "sqlite:///%s" % data_struct.DB_PATH, echo=True)
     return engine 
 
+def create_valuation_table(conn):
+    sql= '''
+CREATE TABLE IF NOT EXISTS "Valuation" (
+    id BIGINT, 
+    code TEXT, 
+    pe_ratio FLOAT, 
+    turnover_ratio FLOAT, 
+    pb_ratio FLOAT, 
+    ps_ratio FLOAT, 
+    pcf_ratio FLOAT, 
+    capitalization FLOAT, 
+    market_cap FLOAT, 
+    circulating_cap FLOAT, 
+    circulating_market_cap FLOAT, 
+    day TEXT, 
+    pe_ratio_lyr FLOAT
+    
+    , PRIMARY KEY( id)
+    );
+    '''
+    
+    conn.execute( sql) 
 
- # 打开DB，并酌情建表，返回 sqlite3.Connection
-def get_db_conn():
-    conn = sqlite3.connect( data_struct.DB_PATH )
-    conn.text_factory = str
- 
+def create_balance_table(conn):
     sql = ''' CREATE TABLE IF NOT EXISTS BalanceSheetDay (
-       id  INTERGER
+       id  BIGINT
        , code   TEXT 
        , day    TEXT
        , pubDate TEXT
@@ -116,31 +137,20 @@ def get_db_conn():
     conn.execute( sql) 
     
 
+
+
+ # 打开DB，并酌情建表，返回 sqlite3.Connection
+def get_db_conn():
+    conn = sqlite3.connect( data_struct.DB_PATH )
+    conn.text_factory = str
+ 
+    create_balance_table( conn )
+    create_valuation_table(conn)
+
     conn.commit()
 
     return conn 
 
-
-def save_sec_info_to_db( dbcur, info): 
-    dbcur.execute( '''insert or replace into  SecurityInfo(
-                code, name , dir 
-                )
-            values (?, ?, ?
-                 )'''
-                , ( info.code , info.name  , info.dirpath 
-                  )
-                )
-
-
-def save_sec_info_to_db_if_not_exists( dbcur, info): 
-    dbcur.execute( '''
-                insert into SecurityInfo (code,name,dir)
-                select ? , ? ,?
-                where 
-                   not exists (select 1 from SecurityInfo  where  code = ? )
-                 '''
-                , ( info.code , info.name  , info.dirpath , info.code       )
-                )
 
     
 def save_balance_df_to_db(engine, dataframe ):
@@ -151,7 +161,17 @@ def save_balance_df_to_db(engine, dataframe ):
     #pd.reset_option('display.max_columns')
 
 
+    a = nr.clean_df_db_dups(a ,'BalanceSheetDay', engine, ['id'] ) 
+
     a.to_sql( 'BalanceSheetDay', con = engine , index=False, if_exists='append')
+
+def save_valuation_df_to_db(engine, dataframe ):
+    #pd.set_option('display.max_columns', 200)
+
+    #pd.reset_option('display.max_columns')
+
+    a = nr.clean_df_db_dups(dataframe, 'Valuation', engine, ['id'] ) 
+    a.to_sql( 'Valuation', con = engine , index=False, if_exists='append')
 
 
 def save_df_to_db_table(engine, dataframe, tablename ):

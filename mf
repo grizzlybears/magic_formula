@@ -19,6 +19,8 @@ import  pandas as pd
 import db_operator
 import data_struct 
 import jq_acc
+import data_fetcher
+
 
 MY_NAME='mf'
 
@@ -28,49 +30,8 @@ def print_usage( argv0 = MY_NAME ):
     print "Usage:"
 
 
-def query_financial_statement():
-    # 查询平安银行2014年的年报
-    q = jq.query(
-          jq.income.statDate,
-          jq.income.code,
-          jq.income.basic_eps,
-          jq.cash_flow.goods_sale_and_service_render_cash
-          ).filter(
-                  jq.income.code == '000001.XSHE',
-                  )
-
-    ret = jq.get_fundamentals(q, statDate='2014')
-
-    print ret
-
-def query_financial_statement2():
-    # 查询平安银行2014年的资产负债表
-    q = jq.query(
-          jq.balance
-          ).filter(
-                  jq.balance.code== '000001.XSHE',
-                  )
-
-    ret = jq.get_fundamentals(q, statDate='2014')
-
-    print ret
- 
-# 获得指定股票指定年度的负债表
-def get_annual_balancesheet(sec_code , statYYYY):
-    q = jq.query(
-          jq.balance
-          ).filter(
-                  jq.balance.code== sec_code,
-                  )
-
-    ret = jq.get_fundamentals(q, statDate= statYYYY)
-
-    return ret
-
-
 
 def list_all_sec():
-    #r = query_financial_statement2()
     r = jq.get_all_securities()
     pd.set_option('display.max_rows', len(r))
     print r
@@ -87,10 +48,14 @@ def handle_fetch( argv, argv0 = MY_NAME ):
         # get db engine
         engine = db_operator.get_db_engine()
 
-        df = get_annual_balancesheet('000001.XSHE', '2017')
+        df =  data_fetcher.get_annual_balancesheet('000001.XSHE', '2017')
         #print df
 
         db_operator. save_balance_df_to_db(engine, df)
+        
+        df =  data_fetcher.get_valuation('000001.XSHE', '2017-12-31')
+        db_operator. save_valuation_df_to_db (engine, df)
+
 
         # real stuff
         
@@ -107,7 +72,6 @@ def handle_fetch( argv, argv0 = MY_NAME ):
 
 
     return 0
-
 
 
 
