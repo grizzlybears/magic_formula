@@ -49,6 +49,7 @@ def create_balance_table(conn):
        , day    TEXT
        , pubDate TEXT
        , statDate TEXT
+       , "statDate.1" TEXT
        , cash_equivalents  NUMERIC
        , settlement_provi  NUMERIC
        , lend_capital      NUMERIC
@@ -137,6 +138,60 @@ def create_balance_table(conn):
     conn.execute( sql) 
     
 
+def create_income_table(conn):
+    sql= '''
+CREATE TABLE  IF NOT EXISTS "Income" (
+    id BIGINT, 
+    code TEXT, 
+    "statDate" TEXT, 
+    "pubDate" TEXT, 
+    "statDate.1" TEXT, 
+    total_operating_revenue FLOAT, 
+    operating_revenue FLOAT, 
+    interest_income FLOAT, 
+    premiums_earned FLOAT, 
+    commission_income FLOAT, 
+    total_operating_cost FLOAT, 
+    operating_cost FLOAT, 
+    interest_expense FLOAT, 
+    commission_expense FLOAT, 
+    refunded_premiums FLOAT, 
+    net_pay_insurance_claims FLOAT, 
+    withdraw_insurance_contract_reserve FLOAT, 
+    policy_dividend_payout FLOAT, 
+    reinsurance_cost FLOAT, 
+    operating_tax_surcharges FLOAT, 
+    sale_expense FLOAT, 
+    administration_expense FLOAT, 
+    financial_expense FLOAT, 
+    asset_impairment_loss FLOAT, 
+    fair_value_variable_income FLOAT, 
+    investment_income FLOAT, 
+    invest_income_associates FLOAT, 
+    exchange_income FLOAT, 
+    operating_profit FLOAT, 
+    non_operating_revenue FLOAT, 
+    non_operating_expense FLOAT, 
+    disposal_loss_non_current_liability FLOAT, 
+    total_profit FLOAT, 
+    income_tax_expense FLOAT, 
+    net_profit FLOAT, 
+    np_parent_company_owners FLOAT, 
+    minority_profit FLOAT, 
+    basic_eps FLOAT, 
+    diluted_eps FLOAT, 
+    other_composite_income FLOAT, 
+    total_composite_income FLOAT, 
+    ci_parent_company_owners FLOAT, 
+    ci_minority_owners FLOAT
+    
+    , PRIMARY KEY( id)
+);
+
+    '''
+    
+    conn.execute( sql) 
+
 
 
  # 打开DB，并酌情建表，返回 sqlite3.Connection
@@ -146,7 +201,8 @@ def get_db_conn():
  
     create_balance_table( conn )
     create_valuation_table(conn)
-
+    create_income_table(conn)
+    
     conn.commit()
 
     return conn 
@@ -156,12 +212,12 @@ def get_db_conn():
 def save_balance_df_to_db(engine, dataframe ):
     #pd.set_option('display.max_columns', 200)
 
-    a = dataframe.drop( 'statDate.1' ,  axis =1 )  # 这列表里没有
+    # a = dataframe.drop( 'statDate.1' ,  axis =1 )  # 这列文档里没有
 
     #pd.reset_option('display.max_columns')
 
 
-    a = nr.clean_df_db_dups(a ,'BalanceSheetDay', engine, ['id'] ) 
+    a = nr.clean_df_db_dups(dataframe ,'BalanceSheetDay', engine, ['id'] ) 
 
     a.to_sql( 'BalanceSheetDay', con = engine , index=False, if_exists='append')
 
@@ -172,6 +228,15 @@ def save_valuation_df_to_db(engine, dataframe ):
 
     a = nr.clean_df_db_dups(dataframe, 'Valuation', engine, ['id'] ) 
     a.to_sql( 'Valuation', con = engine , index=False, if_exists='append')
+
+
+def save_income_df_to_db(engine, dataframe ):
+    #pd.set_option('display.max_columns', 200)
+
+    #pd.reset_option('display.max_columns')
+
+    a = nr.clean_df_db_dups(dataframe, 'Income', engine, ['id'] ) 
+    a.to_sql( 'Income', con = engine , index=False, if_exists='append')
 
 
 def save_df_to_db_table(engine, dataframe, tablename ):

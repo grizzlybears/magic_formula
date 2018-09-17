@@ -14,12 +14,12 @@ import subprocess
 
 
 import  jqdatasdk as jq
-import  pandas as pd
 
-import db_operator
 import data_struct 
 import jq_acc
-import data_fetcher
+
+import magic
+
 
 
 MY_NAME='mf'
@@ -29,77 +29,6 @@ MY_NAME='mf'
 def print_usage( argv0 = MY_NAME ):
     print "Usage:"
 
-
-
-def list_all_sec():
-    r = jq.get_all_securities()
-    pd.set_option('display.max_rows', len(r))
-    print r
-    pd.reset_option('display.max_rows')
-
-
-# 处理 'fetch' 子命令
-def handle_fetch( argv, argv0 = MY_NAME ): 
-    try:
-        # make sure DB exists
-        conn = db_operator.get_db_conn()
-        conn.close()
-
-        # get db engine
-        engine = db_operator.get_db_engine()
-
-        df =  data_fetcher.get_annual_balancesheet('000001.XSHE', '2017')
-        #print df
-
-        db_operator. save_balance_df_to_db(engine, df)
-        
-        df =  data_fetcher.get_valuation('000001.XSHE', '2017-12-31')
-        db_operator. save_valuation_df_to_db (engine, df)
-
-
-        # real stuff
-        
-
-    except  Exception as e:
-        
-        (t, v, bt) = sys.exc_info()
-        traceback.print_exception(t, v, bt)
-        print
-        print e
-        return 1 
-    finally:
-        pass
-
-
-    return 0
-
-
-
-# 处理 'list' 子命令
-def handle_list( argv, argv0 = MY_NAME ): 
-    try:
-        # connect to DB 
-        conn = db_operator.get_db_conn()
-        dbcur = conn.cursor()
-
-        # real stuff
-        list_all_sec()
-        
-        # DB clean up
-        conn.commit()
-
-    except  Exception as e:
-        
-        (t, v, bt) = sys.exc_info()
-        traceback.print_exception(t, v, bt)
-        print
-        print e
-        return 1 
-    finally:
-        dbcur.close()
-        conn.close()
-
-    return 0
 
 
 def make_sure_working_dir():
@@ -128,9 +57,9 @@ def main():
     if ('import' == sub_command ):
         return handle_import ( sys.argv[2:] )   
     elif ('fetch' == sub_command ):
-        return handle_fetch ( sys.argv[2:] )  
+        return magic.handle_fetch ( sys.argv[2:], MY_NAME  )  
     elif ('list' == sub_command ):
-        return handle_list ( sys.argv[2:] )  
+        return magic.handle_list ( sys.argv[2:], MY_NAME )  
     elif ('help' == sub_command ):
         print_usage()
         return 1
