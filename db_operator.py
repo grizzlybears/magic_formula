@@ -16,7 +16,8 @@ import to_sql_newrows as nr
 
 # 打开DB，返回 sqlalchemy 的 db engine 
 def get_db_engine():
-    engine = create_engine( "sqlite:///%s" % data_struct.DB_PATH, echo=True)
+    #engine = create_engine( "sqlite:///%s" % data_struct.DB_PATH, echo=True)
+    engine = create_engine( "sqlite:///%s" % data_struct.DB_PATH)
     return engine 
 
 def create_valuation_table(conn):
