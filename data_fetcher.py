@@ -45,6 +45,19 @@ def get_valuation(sec_code , yyyy_mm_dd):
 
     return ret
 
+# 获得指定股票指定时间段的日线
+def get_daily_line(sec_code , t_start, t_end ):
+    df = jq.get_price(sec_code
+            , start_date= t_start, end_date=t_end
+            , frequency='daily'
+            , fields=None
+            , skip_paused=False
+            , fq='pre'
+            )
+
+    return df
+
+
 
 
 

@@ -193,7 +193,22 @@ CREATE TABLE  IF NOT EXISTS "Income" (
     
     conn.execute( sql) 
 
-
+def create_daily_line_table(conn):
+    sql= '''
+CREATE TABLE if not exists "DailyLine" (
+    code TEXT, 
+    t_day TEXT, 
+    open FLOAT, 
+    close FLOAT, 
+    high FLOAT, 
+    low FLOAT, 
+    volume FLOAT, 
+    money FLOAT
+    , PRIMARY KEY( code, t_day)
+);
+    '''
+    
+    conn.execute( sql) 
 
  # 打开DB，并酌情建表，返回 sqlite3.Connection
 def get_db_conn():
@@ -203,6 +218,7 @@ def get_db_conn():
     create_balance_table( conn )
     create_valuation_table(conn)
     create_income_table(conn)
+    create_daily_line_table(conn)
     
     conn.commit()
 
@@ -238,6 +254,25 @@ def save_income_df_to_db(engine, dataframe ):
 
     a = nr.clean_df_db_dups(dataframe, 'Income', engine, ['id'] ) 
     a.to_sql( 'Income', con = engine , index=False, if_exists='append')
+
+
+def date_only(dt):
+    s = str(dt)[:10]
+    return s
+   
+
+def save_daily_line_to_db(engine, code, dataframe ):
+    #pd.set_option('display.max_columns', 200)
+
+    #pd.reset_option('display.max_columns')
+
+    a= dataframe 
+    a.insert(0, 'code', code)
+    a['t_day'] = a.index
+    a['t_day'] = a['t_day'].apply(date_only) 
+    #print a
+    a = nr.clean_df_db_dups(a , 'DailyLine', engine, ['code', 't_day'] ) 
+    a.to_sql( 'DailyLine', con = engine , index=False, if_exists='append')
 
 
 def save_df_to_db_table(engine, dataframe, tablename ):

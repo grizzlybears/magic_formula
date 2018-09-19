@@ -35,14 +35,19 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
 
     db_operator. save_balance_df_to_db(engine, df)
     
+    #抓取利润表
+    df =  data_fetcher.get_annual_income( sec_code , YYYY )
+    db_operator.save_income_df_to_db (engine, df)
+
     #抓取第二年05/01日的市值
     t_day = str(the_year + 1)  + "-05-01"
     df =  data_fetcher.get_valuation(sec_code , t_day )
     db_operator. save_valuation_df_to_db (engine, df)
 
-    #抓取利润表
-    df =  data_fetcher.get_annual_income( sec_code , YYYY )
-    db_operator.save_income_df_to_db (engine, df)
+    #抓取第二年05/01 ~ 05/10的行情
+    t_day_end = str(the_year + 1)  + "-05-10"
+    df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+    db_operator. save_daily_line_to_db (engine, sec_code , df)
 
 
 
@@ -80,6 +85,7 @@ def fetch_fundamentals_1_year(engine, the_year):
      
         print "  fetching %s" % code
         fetch_target_stock_fundamentals(engine, code , the_year )
+        #break
 
 
     print "finished fetching fetch_fundamentals for %d" % the_year
