@@ -8,6 +8,7 @@ from datetime import date
 from datetime import datetime
 
 import codecs
+import csv
 
 import data_struct 
 
@@ -31,8 +32,6 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
     
     #抓取资产负债表
     df =  data_fetcher.get_annual_balancesheet( sec_code , YYYY)
-    #print df
-
     db_operator. save_balance_df_to_db(engine, df)
     
     #抓取利润表
@@ -49,7 +48,20 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
     df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
     db_operator. save_daily_line_to_db (engine, sec_code , df)
 
+def list_index_1_year(code, the_year):
+    #
+    yyyymmdd= "%d-05-01" % the_year
 
+    # 取当年该指数成份
+    members = jq.get_index_stocks( code, date = yyyymmdd )
+
+    filename = "%s/%s.%s.csv" % ( data_struct.WORKING_DIR,  code, the_year )
+    with open(filename, "w") as the_file:
+        writer = csv.writer( the_file , lineterminator='\n')
+        for val in members:
+            writer.writerow([val])
+
+ 
 
 def fetch_fundamentals_1_year(engine, the_year):
     #
@@ -102,6 +114,12 @@ def fetch_fundamentals_until_now(engine, start_year):
         fetch_fundamentals_1_year( engine, y)
 
 
+def list_index_until_now(code, start_year):
+    now = datetime.now()
+
+    for y in range( start_year, now.year):
+        list_index_1_year( code, y)
+
 
 
 # 处理 'fetch' 子命令
@@ -151,15 +169,18 @@ def handle_fetch( argv, argv0 ):
 # 处理 'list' 子命令
 def handle_list( argv, argv0  ): 
     try:
-        # connect to DB 
-        conn = db_operator.get_db_conn()
-        dbcur = conn.cursor()
+        i = len(argv)
+        if ( 1 == i  ):
+            start_year = int(argv[0])
+        else:
+            now = datetime.now()
+            start_year = now.year - 1
 
-        # real stuff
-        list_all_sec()
-        
-        # DB clean up
-        conn.commit()
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        list_index_until_now('000300.XSHG', start_year)
 
     except  Exception as e:
         
@@ -169,8 +190,7 @@ def handle_list( argv, argv0  ):
         print e
         return 1 
     finally:
-        dbcur.close()
-        conn.close()
+        pass
 
     return 0
 
