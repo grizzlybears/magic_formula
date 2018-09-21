@@ -238,7 +238,11 @@ def save_balance_df_to_db(engine, dataframe ):
 
     a.to_sql( 'BalanceSheetDay', con = engine , index=False, if_exists='append')
 
-def save_valuation_df_to_db(engine, dataframe ):
+def save_valuation_df_to_db(engine, dataframe ): 
+    
+    if dataframe is None:
+        return
+
     #pd.set_option('display.max_columns', 200)
 
     #pd.reset_option('display.max_columns')
@@ -265,6 +269,8 @@ def save_daily_line_to_db(engine, code, dataframe ):
     #pd.set_option('display.max_columns', 200)
 
     #pd.reset_option('display.max_columns')
+    if dataframe is None:
+        return
 
     a= dataframe 
     a.insert(0, 'code', code)

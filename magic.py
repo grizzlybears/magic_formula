@@ -4,8 +4,7 @@ import sys
 import site
 import traceback
 
-from datetime import date
-from datetime import datetime
+from datetime import date,datetime,timedelta
 
 import codecs
 import csv
@@ -38,15 +37,76 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
     df =  data_fetcher.get_annual_income( sec_code , YYYY )
     db_operator.save_income_df_to_db (engine, df)
 
+    now = datetime.now()
+    #抓取当年05/01日的市值
+    t_day = str(the_year )  + "-05-01"
+    df =  data_fetcher.get_valuation(sec_code , t_day )
+    db_operator. save_valuation_df_to_db (engine, df)
+
     #抓取第二年05/01日的市值
     t_day = str(the_year + 1)  + "-05-01"
     df =  data_fetcher.get_valuation(sec_code , t_day )
     db_operator. save_valuation_df_to_db (engine, df)
 
-    #抓取第二年05/01 ~ 05/10的行情
-    t_day_end = str(the_year + 1)  + "-05-10"
-    df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
-    db_operator. save_daily_line_to_db (engine, sec_code , df)
+    if the_year < (now.year - 1):
+        #前年或更久以前
+
+        #抓取当年05/01 ~ 05/10的行情，计算收益用
+        t_day = str(the_year)   + "-05-01"
+        t_day_end = str(the_year )  + "-05-10"
+        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+        db_operator. save_daily_line_to_db (engine, sec_code , df)
+
+        #抓取第二年05/01 ~ 05/10的行情，换仓用
+        t_day = str(the_year + 1)  + "-05-01"
+        t_day_end = str(the_year + 1)  + "-05-10"
+        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+        db_operator. save_daily_line_to_db (engine, sec_code , df)
+
+        #抓取第三年05/01 ~ 05/10的行情，计算收益用
+        t_day = str(the_year + 2)  + "-05-01"
+        t_day_end = str(the_year + 2)  + "-05-10"
+        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+        db_operator. save_daily_line_to_db (engine, sec_code , df)
+    elif the_year < now.year:
+        # the_year是 去年
+
+        #抓取当年05/01 ~ 05/10的行情，计算收益用
+        t_day = str(the_year )  + "-05-01"
+        t_day_end = str(the_year )  + "-05-10"
+        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+        db_operator. save_daily_line_to_db (engine, sec_code , df)
+
+
+        if now.month >=5 :
+            #抓取第二年05/01 ~ 05/10的行情，换仓用
+            t_day = str(the_year + 1)  + "-05-01"
+            t_day_end = str(the_year + 1)  + "-05-10"
+            df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+            db_operator. save_daily_line_to_db (engine, sec_code , df)
+
+        #抓取最后十天行情，计算收益用
+        td = timedelta( days = 10)
+        t_day = (now - td).strftime("%Y-%m-%d")
+        t_day_end = now.strftime("%Y-%m-%d")
+        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+        db_operator. save_daily_line_to_db (engine, sec_code , df)
+    else:
+        # the_year就是今年
+        if now.month >=5 :
+            #抓取今年05/01 ~ 05/10的行情，换仓用
+            t_day = str(the_year )  + "-05-01"
+            t_day_end = str(the_year )  + "-05-10"
+            df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+            db_operator. save_daily_line_to_db (engine, sec_code , df)
+
+        #抓取最后十天行情，计算收益用
+        td = timedelta( days = 10)
+        t_day = (now - td).strftime("%Y-%m-%d")
+        t_day_end = now.strftime("%Y-%m-%d")
+        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
+        db_operator. save_daily_line_to_db (engine, sec_code , df)
+
 
 def list_index_1_year(code, the_year):
     #
@@ -110,7 +170,7 @@ def fetch_fundamentals_until_now(engine, start_year):
     
     now = datetime.now()
 
-    for y in range( start_year, now.year):
+    for y in range( start_year, now.year + 1):
         fetch_fundamentals_1_year( engine, y)
 
 
