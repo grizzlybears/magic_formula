@@ -10,14 +10,29 @@ import data_struct
 
 import  pandas as pd
 from   sqlalchemy import create_engine
+from   sqlalchemy.sql  import select as alch_select
+from   sqlalchemy.sql  import text   as alch_text
+from   sqlalchemy    import  MetaData 
 
 import to_sql_newrows as nr
 
+
+s_metadata = None
 
 # 打开DB，返回 sqlalchemy 的 db engine 
 def get_db_engine():
     #engine = create_engine( "sqlite:///%s" % data_struct.DB_PATH, echo=True)
     engine = create_engine( "sqlite:///%s" % data_struct.DB_PATH)
+    
+    # Create a MetaData instance
+    global s_metadata 
+    s_metadata = MetaData( engine, reflect=True)
+
+    # reflect db schema to MetaData
+    # s_metadata.reflect(bind=engine)
+
+    #print s_metadata.tables
+
     return engine 
 
 def create_valuation_table(conn):
@@ -207,8 +222,20 @@ CREATE TABLE if not exists "DailyLine" (
     , PRIMARY KEY( code, t_day)
 );
     '''
-    
     conn.execute( sql) 
+
+#记录某天某股票是否停牌
+def create_pause_table(conn):
+    sql= '''
+CREATE TABLE if not exists "IsPaused" (
+    code TEXT, 
+    t_day TEXT, 
+    is_paused integer
+    , PRIMARY KEY( code, t_day)
+);
+    '''
+    conn.execute( sql) 
+
 
  # 打开DB，并酌情建表，返回 sqlite3.Connection
 def get_db_conn():
@@ -219,6 +246,7 @@ def get_db_conn():
     create_valuation_table(conn)
     create_income_table(conn)
     create_daily_line_table(conn)
+    create_pause_table(conn)
     
     conn.commit()
 
@@ -273,9 +301,10 @@ def save_daily_line_to_db(engine, code, dataframe ):
         return
 
     a= dataframe 
-    a.insert(0, 'code', code)
-    a['t_day'] = a.index
-    a['t_day'] = a['t_day'].apply(date_only) 
+    a.insert(0, 'code', code) # 加一列'code'，都设为code
+    a['t_day'] = a.index      # 加一列't_day'，设为该行的index，也就是 datetime64
+    a['t_day'] = a['t_day'].apply(date_only)    # 对于所有行的't_day'列，执行一次'date_only'函数
+
     #print a
     a = nr.clean_df_db_dups(a , 'DailyLine', engine, ['code', 't_day'] ) 
     a.to_sql( 'DailyLine', con = engine , index=False, if_exists='append')
@@ -285,5 +314,40 @@ def save_df_to_db_table(engine, dataframe, tablename ):
     dataframe.to_sql( tablename, con = engine , if_exists='append')
 
 
+def query_paused(engine, code, t_day ):
+
+    yyyymmdd= "%d-%02d-%02d" % (t_day.year , t_day.month, t_day.day)
+
+    conn = engine.connect()
+
+    s = alch_text(
+            '''
+            select is_paused from IsPaused
+            where code = :a and t_day = :b
+            '''
+            )
+
+    r = conn.execute( s, a = code, b = yyyymmdd).fetchall()
+    
+    if len(r) ==0 :
+        return None
+
+    return r[0][0]
+
+def record_paused(engine, code, t_day, is_paused ):
+
+    yyyymmdd= "%d-%02d-%02d" % (t_day.year , t_day.month, t_day.day)
+
+    conn = engine.connect()
+
+    global s_metadata 
+    #print s_metadata.tables
+
+    T_IsPaused = s_metadata.tables['IsPaused']
+
+    ins = T_IsPaused.insert().values(code = code, t_day = yyyymmdd, is_paused = is_paused)
+
+    r = conn.execute( ins )
+    
 
 

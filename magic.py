@@ -38,10 +38,6 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
     db_operator.save_income_df_to_db (engine, df)
 
     now = datetime.now()
-    #抓取当年05/01日的市值
-    t_day = str(the_year )  + "-05-01"
-    df =  data_fetcher.get_valuation(sec_code , t_day )
-    db_operator. save_valuation_df_to_db (engine, df)
 
     #抓取第二年05/01日的市值
     t_day = str(the_year + 1)  + "-05-01"
@@ -50,12 +46,6 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
 
     if the_year < (now.year - 1):
         #前年或更久以前
-
-        #抓取当年05/01 ~ 05/10的行情，计算收益用
-        t_day = str(the_year)   + "-05-01"
-        t_day_end = str(the_year )  + "-05-10"
-        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
-        db_operator. save_daily_line_to_db (engine, sec_code , df)
 
         #抓取第二年05/01 ~ 05/10的行情，换仓用
         t_day = str(the_year + 1)  + "-05-01"
@@ -70,14 +60,7 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
         db_operator. save_daily_line_to_db (engine, sec_code , df)
     elif the_year < now.year:
         # the_year是 去年
-
-        #抓取当年05/01 ~ 05/10的行情，计算收益用
-        t_day = str(the_year )  + "-05-01"
-        t_day_end = str(the_year )  + "-05-10"
-        df =  data_fetcher.get_daily_line(sec_code , t_day, t_day_end  )
-        db_operator. save_daily_line_to_db (engine, sec_code , df)
-
-
+        
         if now.month >=5 :
             #抓取第二年05/01 ~ 05/10的行情，换仓用
             t_day = str(the_year + 1)  + "-05-01"
@@ -121,16 +104,129 @@ def list_index_1_year(code, the_year):
         for val in members:
             writer.writerow([val])
 
- 
 
+
+
+def is_paused(engine, code, t_day ):
+
+    q = db_operator.query_paused( engine, code, t_day)
+
+    if q is not None:
+        return q == 1
+
+    print '%s, %s DB里没查到是否停牌' % (code,t_day)
+
+    i = data_fetcher.check_if_paused(code, t_day)
+    
+    db_operator.record_paused(engine , code , t_day, i )
+    
+
+    return i != 0
+
+
+def fetch_magic_candidators(engine,t_day):
+    # 中证价值回报量化策略指数的样本空间由满足以下条件的沪深 A 股构成： 
+    # （1）非 ST、*ST 股票，非暂停上市股票； （2）非金融类股票。
+    
+    all_stocks = list( jq.get_all_securities(types=['stock'], date= t_day ).index)
+ 
+    # 排除金融类的股票
+    banks      = jq.get_industry_stocks( 'J66' , date= t_day )
+    brokers    = jq.get_industry_stocks( 'J67' , date= t_day )
+    insurances = jq.get_industry_stocks( 'J68' , date= t_day )
+    others     = jq.get_industry_stocks( 'J69' , date= t_day)
+    exclude = banks + brokers + insurances + others
+
+    filtered_1 = []
+
+    for code in all_stocks:
+        if (code in exclude) :
+            print "  ... %s 是金融类, 排除..." % code 
+            continue
+
+        filtered_1.append (code)
+
+    # 排除 ST
+    st = jq.get_extras('is_st', filtered_1, start_date= t_day, end_date= t_day, df=False)
+
+ 
+    filtered_2 = []
+    for code in filtered_1:
+        if st[code][0]:
+            print "  ...  %s 是ST，排除" % code
+            continue
+
+        filtered_2.append(code)
+
+
+    filtered_3 = []
+    # 排除停牌 
+    for code in filtered_2:
+        if is_paused(engine, code, t_day):
+            print "  ...  %s 停牌，排除" % code
+            continue
+
+        filtered_3.append(code)
+
+
+    return filtered_3 
+
+
+def fetch_fundamentals_1_year_may(engine, the_year, t_day):
+    #根据去年年报，准备每年5月的样本列表。
+    print "make list of %s" % t_day
+
+    candidators = fetch_magic_candidators( engine,  t_day)
+    print candidators 
+
+
+def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
+    #根据当年的半年报，准备每年11月的样本列表。
+    print "make list of %s" % t_day
+    pass
+
+#为了进行'the_year'的调仓，收集基本数据
 def fetch_fundamentals_1_year(engine, the_year):
+    #中证价值回报量化策略指数的样本股每半年调整一次
+    #样本股调整实施日为每年5月和11月的第六个交易日。
+
+    today  = datetime.now()
+
+    if today.year < the_year:
+        t_day = data_fetcher.get_t_day_in_mon( the_year, 5 , 6)
+        fetch_fundamentals_1_year_may(engine, the_year, t_day)
+        
+        t_day = data_fetcher.get_t_day_in_mon( the_year, 11 , 6)
+        fetch_fundamentals_1_year_nov(engine, the_year, t_day)
+        return
+
+    # 检查是否可以制作今年5月的样本列表
+    t_day = data_fetcher.get_t_day_in_mon( the_year, 5 , 6)
+    if t_day is None or today <= t_day:
+        return
+    
+    fetch_fundamentals_1_year_may(engine, the_year, t_day)
+
+      
+    # 检查是否可以制作今年11月的样本列表
+    t_day = data_fetcher.get_t_day_in_mon( the_year, 11, 6)
+ 
+    if t_day is None or today <= t_day:
+        return
+  
+    fetch_fundamentals_1_year_nov(engine, the_year,t_day)
+    
+    return 
+
+
+
+def fetch_fundamentals_1_year_300(engine, the_year):
     #
     # 沪深300 样本股调整实施时间分别是每年 6 月和 12 月的第二个星期五的下一交易日
     # 我们假设每年五月(年报出来)换仓
     print "fetch fetch_fundamentals for %d" % the_year
 
     yyyymmdd= "%d-05-01" % the_year
-
     # 取当年沪深300成份
     hs300 = jq.get_index_stocks( '000300.XSHG', date = yyyymmdd )
     #print hs300
@@ -241,6 +337,7 @@ def handle_list( argv, argv0  ):
             return 1
 
         list_index_until_now('000300.XSHG', start_year)
+
 
     except  Exception as e:
         
