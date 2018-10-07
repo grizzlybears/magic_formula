@@ -25,7 +25,7 @@ def list_all_sec():
     pd.reset_option('display.max_rows')
 
 
-def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
+def fetch_target_stock_fundamentals_and_some_md(engine, sec_code , the_year ):
 
     YYYY = str(the_year)
     
@@ -91,6 +91,35 @@ def fetch_target_stock_fundamentals(engine, sec_code , the_year ):
         db_operator. save_daily_line_to_db (engine, sec_code , df)
 
 
+def fetch_target_stock_fundamentals(engine, sec_code , statDate, t_day, query_statDate ):
+
+    print "酌情抓 %s 于%s的财报，以及%s的市值" % ( sec_code, statDate, t_day)
+
+    #酌情抓取资产负债表
+
+    r = db_operator.query_balancesheet( engine, sec_code, query_statDate)
+    if r is None:
+        print "    需要抓资产负债表" 
+        df =  data_fetcher.get_annual_balancesheet( sec_code , statDate )
+        db_operator.record_balance_df_to_db(engine, df)
+    
+    #酌情抓取利润表
+    r = db_operator.query_income( engine, sec_code, query_statDate)
+    if r is None:
+        print "    需要抓利润表" 
+        df =  data_fetcher.get_annual_income( sec_code , statDate )
+        db_operator.record_income_df_to_db(engine, df)
+    
+
+    #酌情抓取t_day的市值 
+    ymd = "%d-%02d-%02d" % ( t_day.year, t_day.month, t_day.day )
+    r = db_operator.query_valuation( engine, sec_code, ymd )
+    if r is None:
+        print "    需要抓市值数据" 
+        df =  data_fetcher.get_valuation( sec_code , t_day )
+        db_operator.record_valuation_df_to_db(engine, df)
+
+
 def list_index_1_year(code, the_year):
     #
     yyyymmdd= "%d-05-01" % the_year
@@ -114,7 +143,7 @@ def is_paused(engine, code, t_day ):
     if q is not None:
         return q == 1
 
-    print '%s, %s DB里没查到是否停牌' % (code,t_day)
+    #print '%s, %s DB里没查到是否停牌' % (code,t_day)
 
     i = data_fetcher.check_if_paused(code, t_day)
     
@@ -129,7 +158,9 @@ def fetch_magic_candidators(engine,t_day):
     # （1）非 ST、*ST 股票，非暂停上市股票； （2）非金融类股票。
     
     all_stocks = list( jq.get_all_securities(types=['stock'], date= t_day ).index)
- 
+    all_stocks = all_stocks[:100]
+
+
     # 排除金融类的股票
     banks      = jq.get_industry_stocks( 'J66' , date= t_day )
     brokers    = jq.get_industry_stocks( 'J67' , date= t_day )
@@ -177,12 +208,26 @@ def fetch_fundamentals_1_year_may(engine, the_year, t_day):
     print "make list of %s" % t_day
 
     candidators = fetch_magic_candidators( engine,  t_day)
-    print candidators 
+    #print candidators 
+
+    statDate = str(the_year - 1) #去年年报
+    query_statDate  = statDate + "-12-31"
+    for code in candidators:
+        fetch_target_stock_fundamentals(engine, code , statDate, t_day, query_statDate  )
+
 
 
 def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
     #根据当年的半年报，准备每年11月的样本列表。
     print "make list of %s" % t_day
+    
+    statDate = str(the_year ) + "q2" # 今年半年报
+    query_statDate  = str(the_year) + "-06-30"
+    candidators = fetch_magic_candidators( engine,  t_day) 
+    
+    for code in candidators:
+        fetch_target_stock_fundamentals(engine, code , statDate, t_day ,query_statDate )
+
     pass
 
 #为了进行'the_year'的调仓，收集基本数据

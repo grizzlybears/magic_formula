@@ -350,4 +350,84 @@ def record_paused(engine, code, t_day, is_paused ):
     r = conn.execute( ins )
     
 
+def query_balancesheet(engine, code, statDate ):
+
+    conn = engine.connect()
+
+    s = alch_text(
+            '''
+            select * from BalanceSheetDay
+            where code = :a and statDate = :b
+            '''
+            )
+
+    r = conn.execute( s, a = code, b = statDate ).fetchall()
+    
+    #print r
+
+    if len(r) ==0 :
+        return None
+
+    return r
+
+def record_balance_df_to_db(engine, df ):
+    if df is None:
+        return
+
+    df.to_sql( 'BalanceSheetDay', con = engine , index=False, if_exists='append')
+
+def query_income(engine, code, statDate ):
+
+    conn = engine.connect()
+
+    s = alch_text(
+            '''
+            select * from Income
+            where code = :a and statDate = :b
+            '''
+            )
+
+    r = conn.execute( s, a = code, b = statDate ).fetchall()
+    
+    #print r
+
+    if len(r) ==0 :
+        return None
+
+    return r
+
+def record_income_df_to_db(engine, df ):
+
+    if df is None:
+        return
+
+    df.to_sql( 'Income', con = engine , index=False, if_exists='append')
+
+def query_valuation(engine, code, t_day ):
+
+    conn = engine.connect()
+
+    s = alch_text(
+            '''
+            select * from Valuation
+            where code = :a and day = :b
+            '''
+            )
+
+    r = conn.execute( s, a = code, b = t_day ).fetchall()
+    
+    #print r
+
+    if len(r) ==0 :
+        return None
+
+    return r
+
+def record_valuation_df_to_db(engine, df ):
+ 
+    if df is None:
+        return
+
+    df.to_sql( 'Valuation', con = engine , index=False, if_exists='append')
+
 

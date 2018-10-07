@@ -44,8 +44,7 @@ def get_valuation(sec_code , yyyy_mm_dd):
         return None
  
     valuation_fetched[k] = 1 
-
-    print "    fetch valuation of %s, %s" % k 
+    #print "    fetch valuation of %s, %s" % k 
 
     q = jq.query(
           jq.valuation
