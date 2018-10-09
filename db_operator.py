@@ -236,6 +236,21 @@ CREATE TABLE if not exists "IsPaused" (
     '''
     conn.execute( sql) 
 
+# 净运营资本，固定资产，带息负债, 少数股东权益
+def create_vMagicBalanace(conn):
+    sql= '''
+create view if not exists vMagicBalance
+as 
+select code,statDate
+    , ifnull(account_receivable,0) + ifnull(other_receivable,0) + ifnull(advance_payment,0) + ifnull(inventories,0) - ifnull(notes_payable,0) - ifnull(accounts_payable,0) - ifnull(advance_peceipts,0) - ifnull(taxs_payable,0) - ifnull(interest_payable,0) -  ifnull(other_payable,0) - ifnull(other_current_liability,0) as net_op_cap
+    , fixed_assets
+    , ifnull(shortterm_loan,0) + ifnull(non_current_liability_in_one_year,0) + ifnull(longterm_loan,0) + ifnull(bonds_payable,0) + ifnull(longterm_account_payable,0) as nonfree_liability
+    , ifnull(minority_interests,0) as minority_interests
+from BalanceSheetDay
+    '''
+    conn.execute( sql) 
+
+
 
  # 打开DB，并酌情建表，返回 sqlite3.Connection
 def get_db_conn():
@@ -248,6 +263,8 @@ def get_db_conn():
     create_daily_line_table(conn)
     create_pause_table(conn)
     
+    create_vMagicBalanace(conn)
+
     conn.commit()
 
     return conn 
@@ -430,4 +447,25 @@ def record_valuation_df_to_db(engine, df ):
 
     df.to_sql( 'Valuation', con = engine , index=False, if_exists='append')
 
+
+def create_tmp_EBIT(engine, start_date, end_date ):
+    connection = engine.connect()
+    trans = connection.begin()
+    try:
+        connection.execute("drop table if exists tmpEBIT" )
+
+        sql ='''
+create temp table tmpEBIT 
+as 
+select code, sum( ifnull(net_profit,0) + ifnull(income_tax_expense,0) + ifnull( financial_expense , 0))  as EBIT
+from Income
+where '%s' <=statDate  and statDate <= '%s'
+group by code 
+''' % ( start_date, end_date  )
+        
+        connection.execute(sql)
+        trans.commit()
+    except:
+        trans.rollback()
+        raise Exception("清理/创建 tmpEDIT 失败")
 

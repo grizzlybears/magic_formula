@@ -175,7 +175,8 @@ def fetch_magic_candidators(engine,t_day):
     return filtered_3 
 
 # 编制成份列表
-def build_composition_list(engine, statDate, t_day):
+def build_composition_list(engine, y, m, t_day):
+    db_operator.create_tmp_EBIT(engine, '2017-06-30','2018-03-31' )
     pass
 
 
@@ -256,7 +257,7 @@ def fetch_fundamentals_1_year_may(engine, the_year, t_day):
             db_operator.record_valuation_df_to_db(engine, df)
 
 
-    build_composition_list(engine, statDate, t_day)
+    build_composition_list(engine, the_year, 3 , t_day)
 
 
 def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
@@ -292,7 +293,7 @@ def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
             df =  data_fetcher.get_valuation( code , t_day )
             db_operator.record_valuation_df_to_db(engine, df)
 
-    build_composition_list(engine, statDate, t_day)
+    build_composition_list(engine, the_year, 3 , t_day)
 
 #为了进行'the_year'的调仓，收集基本数据
 def fetch_fundamentals_1_year(engine, the_year):
