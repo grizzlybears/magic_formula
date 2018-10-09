@@ -20,6 +20,8 @@ def get_annual_balancesheet(sec_code , statYYYY):
 
     ret = jq.get_fundamentals(q, statDate= statYYYY)
 
+    if ret is None or len(ret) == 0:
+        print "WARN: %s 于 %s 的资产表没查到 " % (sec_code , statYYYY  )
     return ret
 
 # 获得指定股票指定年度的利润表
@@ -32,6 +34,8 @@ def get_annual_income(sec_code , statYYYY):
 
     ret = jq.get_fundamentals(q, statDate= statYYYY)
 
+    if ret is None or len(ret) == 0:
+        print "WARN: %s 于 %s 的利润没查到 " % (sec_code , statYYYY  )
     return ret
 
 valuation_fetched = {}
@@ -53,7 +57,8 @@ def get_valuation(sec_code , yyyy_mm_dd):
                   )
 
     ret = jq.get_fundamentals(q, date = yyyy_mm_dd)
-
+    if ret is None or len(ret) == 0:
+        print "WARN: %s 于 %s 的市值数据资产表没查到 " % (sec_code , yyyy_mm_dd  )
     return ret
 
 

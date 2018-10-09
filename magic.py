@@ -91,34 +91,6 @@ def fetch_target_stock_fundamentals_and_some_md(engine, sec_code , the_year ):
         db_operator. save_daily_line_to_db (engine, sec_code , df)
 
 
-def fetch_target_stock_fundamentals(engine, sec_code , statDate, t_day, query_statDate ):
-
-    print "酌情抓 %s 于%s的财报，以及%s的市值" % ( sec_code, statDate, t_day)
-
-    #酌情抓取资产负债表
-
-    r = db_operator.query_balancesheet( engine, sec_code, query_statDate)
-    if r is None:
-        print "    需要抓资产负债表" 
-        df =  data_fetcher.get_annual_balancesheet( sec_code , statDate )
-        db_operator.record_balance_df_to_db(engine, df)
-    
-    #酌情抓取利润表
-    r = db_operator.query_income( engine, sec_code, query_statDate)
-    if r is None:
-        print "    需要抓利润表" 
-        df =  data_fetcher.get_annual_income( sec_code , statDate )
-        db_operator.record_income_df_to_db(engine, df)
-    
-
-    #酌情抓取t_day的市值 
-    ymd = "%d-%02d-%02d" % ( t_day.year, t_day.month, t_day.day )
-    r = db_operator.query_valuation( engine, sec_code, ymd )
-    if r is None:
-        print "    需要抓市值数据" 
-        df =  data_fetcher.get_valuation( sec_code , t_day )
-        db_operator.record_valuation_df_to_db(engine, df)
-
 
 def list_index_1_year(code, the_year):
     #
@@ -202,33 +174,125 @@ def fetch_magic_candidators(engine,t_day):
 
     return filtered_3 
 
+# 编制成份列表
+def build_composition_list(engine, statDate, t_day):
+    pass
+
+
+
+def get_prev_season(y,m):
+    m = m - 3
+    if m <= 0:
+        m = m + 12
+        y = y -1
+
+    return (y,m)
+
+def get_stat_and_query_date(y,m):
+    s = ""
+    q = ""
+    if 3 == m:
+        s = str(y) + "q1"
+        q = str(y)+ "-03-31"
+    elif 6==m:
+        s = str(y) + "q2"
+        q = str(y) + "-06-30"
+    elif 9 == m:
+        s = str(y) + "q3"
+        q = str(y) + "-09-30"
+    elif 12 == m :
+        s = str(y) + "q4"
+        q = str(y) + "-12-31"
+    else:
+        raise Exception("月%d非法，必须是[3,6,9,12]之一。" % m)
+
+    return (s , q)
+
+# 从指定年月开始(含)，抓过去howmany季的季度利润表
+def fetch_season_income_sheet(engine,code, y,m , howmany):
+    while howmany>0: 
+        
+        statDate, queryDate = get_stat_and_query_date( y,m)
+
+        r = db_operator.query_income( engine, code, queryDate)
+        if r is None:
+            print "    需要抓利润表%s " % statDate 
+            df =  data_fetcher.get_annual_income( code , statDate )
+            db_operator.record_income_df_to_db(engine, df)
+ 
+        y,m = get_prev_season( y, m )
+        howmany = howmany - 1
+
 
 def fetch_fundamentals_1_year_may(engine, the_year, t_day):
-    #根据去年年报，准备每年5月的样本列表。
+    #准备每年5月的样本列表。
     print "make list of %s" % t_day
 
     candidators = fetch_magic_candidators( engine,  t_day)
     #print candidators 
 
-    statDate = str(the_year - 1) #去年年报
-    query_statDate  = statDate + "-12-31"
     for code in candidators:
-        fetch_target_stock_fundamentals(engine, code , statDate, t_day, query_statDate  )
+        #3月,一季报
+        statDate, query_statDate  =  get_stat_and_query_date(the_year , 3 ) 
 
+        print "酌情抓 %s 于%s的财报，以及%s的市值" % ( code, statDate, t_day)
+        
+        #酌情抓取资产负债表
+        r = db_operator.query_balancesheet( engine, code, query_statDate)
+        if r is None:
+            print "    需要抓资产负债表%s" % statDate 
+            df =  data_fetcher.get_annual_balancesheet( code , statDate )
+            db_operator.record_balance_df_to_db(engine, df)
+        
+        #酌情抓取利润表
+        fetch_season_income_sheet(engine,code, the_year , 3 , 4) #从今年1季开始，抓以往4季
+
+        #酌情抓取t_day的市值 
+        ymd = "%d-%02d-%02d" % ( t_day.year, t_day.month, t_day.day )
+        r = db_operator.query_valuation( engine, code, ymd )
+        if r is None:
+            print "    需要抓市值数据%s" % t_day 
+            df =  data_fetcher.get_valuation( code , t_day )
+            db_operator.record_valuation_df_to_db(engine, df)
+
+
+    build_composition_list(engine, statDate, t_day)
 
 
 def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
-    #根据当年的半年报，准备每年11月的样本列表。
+    #准备每年11月的样本列表。
     print "make list of %s" % t_day
     
-    statDate = str(the_year ) + "q2" # 今年半年报
-    query_statDate  = str(the_year) + "-06-30"
+    # FIXME: 法克，jqdata的利润表不支持半年报，只有季报和年报，
+    #        我们如果需要半年的数据，只有把先搞两个季报，然后自行叠加！
+    
     candidators = fetch_magic_candidators( engine,  t_day) 
     
     for code in candidators:
-        fetch_target_stock_fundamentals(engine, code , statDate, t_day ,query_statDate )
 
-    pass
+        statDate, query_statDate  =  get_stat_and_query_date(the_year , 9 ) #9月，3季报 
+        
+        print "酌情抓 %s 于%s的财报，以及%s的市值" % ( code, statDate, t_day)
+
+        #酌情抓取资产负债表
+        r = db_operator.query_balancesheet( engine, code, query_statDate)
+        if r is None:
+            print "    需要抓资产负债表%s"  % statDate
+            df =  data_fetcher.get_annual_balancesheet( code , statDate )
+            db_operator.record_balance_df_to_db(engine, df)
+     
+        #酌情抓取利润表
+        fetch_season_income_sheet(engine,code, the_year , 9 , 4) #从今年3季开始，抓以往4季
+        
+        #酌情抓取t_day的市值 
+        ymd = "%d-%02d-%02d" % ( t_day.year, t_day.month, t_day.day )
+        r = db_operator.query_valuation( engine, code, ymd )
+        if r is None:
+            print "    需要抓市值数据%s" % t_day
+            df =  data_fetcher.get_valuation( code , t_day )
+            db_operator.record_valuation_df_to_db(engine, df)
+
+    build_composition_list(engine, statDate, t_day)
 
 #为了进行'the_year'的调仓，收集基本数据
 def fetch_fundamentals_1_year(engine, the_year):
@@ -383,6 +447,78 @@ def handle_list( argv, argv0  ):
 
         list_index_until_now('000300.XSHG', start_year)
 
+
+    except  Exception as e:
+        
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+    return 0
+
+
+def show_wanke_2017_income():
+    code = "000002.XSHE"  # 万科A
+    #a = data_fetcher.get_annual_income(code , "2017q1")
+    #print a.loc[0, ['statDate', 'net_profit' ] ]
+    #print 
+
+    #a = data_fetcher.get_annual_income(code , "2017q2")
+    #print a.loc[0, ['statDate', 'net_profit' ] ]
+    #print 
+
+    q3 = data_fetcher.get_annual_income(code , "2017q3")
+    #print q3.loc[0, ['statDate', 'net_profit' ] ]
+    print q3
+    print 
+
+    q4 = data_fetcher.get_annual_income(code , "2017q4")
+    #print q4.loc[0, ['statDate', 'net_profit' ] ]
+    print q4
+    print 
+
+    half2 = q3.append(q4,ignore_index=True)
+    half2.loc['sum'] = half2.sum( min_count=1)
+    print half2 
+    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+        print half2
+    print 
+
+
+    print
+
+
+    #with pd.option_context('display.max_rows', None, 'display.max_columns', 8):
+    #    print q4
+    #print 
+
+    #y = data_fetcher.get_annual_income(code , "2017")
+    #print y.loc[0, ['statDate', 'net_profit' ] ]
+    
+    #with pd.option_context('display.max_rows', None, 'display.max_columns', 8):
+    #    print y
+    #print 
+
+
+
+def do_some_experiment(engine):
+    show_wanke_2017_income()
+
+# 试验场
+def handle_exper( argv, argv0  ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+     
+        do_some_experiment(engine)
 
     except  Exception as e:
         

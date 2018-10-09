@@ -59,7 +59,9 @@ def main():
     elif ('fetch' == sub_command ):
         return magic.handle_fetch ( sys.argv[2:], MY_NAME  )  
     elif ('list' == sub_command ):
-        return magic.handle_list ( sys.argv[2:], MY_NAME )  
+        return magic.handle_list ( sys.argv[2:], MY_NAME )   
+    elif ('exper' == sub_command ):
+        return magic.handle_exper ( sys.argv[2:], MY_NAME )  
     elif ('help' == sub_command ):
         print_usage()
         return 1
