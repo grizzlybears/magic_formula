@@ -177,7 +177,14 @@ def fetch_magic_candidators(engine,t_day):
 # 编制成份列表
 def build_composition_list(engine, y, m, t_day):
     db_operator.create_tmp_EBIT(engine, '2017-06-30','2018-03-31' )
-    pass
+#一起:
+#select m.*,e.EBIT,v.market_cap
+#from tmpEBIT e
+#join vMagicBalance m on ( e.code = m.code and m.statDate='2018-03-31')
+#join Valuation v on ( e.code = v.code and v.day = '2018-05-09')
+ 
+ 
+   pass
 
 
 
