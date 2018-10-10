@@ -448,11 +448,10 @@ def record_valuation_df_to_db(engine, df ):
     df.to_sql( 'Valuation', con = engine , index=False, if_exists='append')
 
 
-def create_tmp_EBIT(engine, start_date, end_date ):
-    connection = engine.connect()
-    trans = connection.begin()
+def create_tmp_EBIT( conn,  start_date, end_date ):
+    trans = conn.begin()
     try:
-        connection.execute("drop table if exists tmpEBIT" )
+        conn.execute("drop table if exists tmpEBIT" )
 
         sql ='''
 create temp table tmpEBIT 
@@ -463,7 +462,7 @@ where '%s' <=statDate  and statDate <= '%s'
 group by code 
 ''' % ( start_date, end_date  )
         
-        connection.execute(sql)
+        conn.execute(sql)
         trans.commit()
     except:
         trans.rollback()

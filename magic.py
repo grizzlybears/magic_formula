@@ -17,6 +17,10 @@ import  pandas as pd
 import db_operator
 import data_fetcher
 
+from   sqlalchemy.sql  import select as alch_select
+from   sqlalchemy.sql  import text   as alch_text
+
+import util
 
 def list_all_sec():
     r = jq.get_all_securities()
@@ -176,25 +180,59 @@ def fetch_magic_candidators(engine,t_day):
 
 # 编制成份列表
 def build_composition_list(engine, y, m, t_day):
-    db_operator.create_tmp_EBIT(engine, '2017-06-30','2018-03-31' )
+
+    s,q = get_stat_and_query_date(y,m)
+    stat_end = q
+
+    s,q = get_stat_and_query_date_3q_before(y,m)
+    stat_start = q
+
+
 #一起:
 #select m.*,e.EBIT,v.market_cap
 #from tmpEBIT e
 #join vMagicBalance m on ( e.code = m.code and m.statDate='2018-03-31')
 #join Valuation v on ( e.code = v.code and v.day = '2018-05-09')
  
- 
-   pass
+    conn = engine.connect()
+    print "利润表统计区间 [ %s ~ %s ]" % (stat_start , stat_end )
+    db_operator.create_tmp_EBIT( conn, stat_start , stat_end )
 
+    ymd = '%d-%02d-%02d' % (t_day.year, t_day.month, t_day.day  )
+    
+    s = '''
+select m.*,e.EBIT,v.market_cap
+from tmpEBIT e
+join vMagicBalance m on ( e.code = m.code and m.statDate= '%s' )
+join Valuation v on ( e.code = v.code and v.day = '%s' )
+            '''  % ( stat_end , ymd )
 
+    #print s
 
-def get_prev_season(y,m):
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    util.bp(r)
+    # 代码, 报表期末日,净运营资本，固定资产，有息负债，少数股东权益，EBIT，市值
+
+def get_1q_before (y,m):
     m = m - 3
     if m <= 0:
         m = m + 12
         y = y -1
 
     return (y,m)
+
+def get_3q_before(y,m):
+    m = m - 9
+    if m <= 0:
+        m = m + 12
+        y = y -1
+    return (y,m)
+
+def get_stat_and_query_date_3q_before (y,m):
+    y,m = get_3q_before(y,m)
+    return get_stat_and_query_date(y,m)
+
 
 def get_stat_and_query_date(y,m):
     s = ""
@@ -228,7 +266,7 @@ def fetch_season_income_sheet(engine,code, y,m , howmany):
             df =  data_fetcher.get_annual_income( code , statDate )
             db_operator.record_income_df_to_db(engine, df)
  
-        y,m = get_prev_season( y, m )
+        y,m = get_1q_before( y, m )
         howmany = howmany - 1
 
 
