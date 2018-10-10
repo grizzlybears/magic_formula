@@ -468,3 +468,51 @@ group by code
         trans.rollback()
         raise Exception("清理/创建 tmpEDIT 失败")
 
+def db_fetch_stock_statements(conn,stat_end , t_day, y, m ):
+    ymd = '%d-%02d-%02d' % (t_day.year, t_day.month, t_day.day  )
+    
+    s = '''
+select m.*,e.EBIT,v.market_cap
+from tmpEBIT e
+join vMagicBalance m on ( e.code = m.code and m.statDate= '%s' )
+join Valuation v on ( e.code = v.code and v.day = '%s' )
+            '''  % ( stat_end , ymd )
+
+    #print s
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    #util.bp(r)
+    # 代码, 报表期末日,净运营资本，固定资产，有息负债，少数股东权益，EBIT，市值
+    # 0     1          2           3         4         5             6     7
+
+    sci_list = []
+
+    for row in r:
+        sci = data_struct.StockCandidatorInfo()
+        sci.year  = y
+        sci.month = m
+        sci.stat_end = stat_end 
+        sci.code          =  row[0]
+        sci.net_op_cap    =  row[2]
+        sci.fixed_assets  =  row[3]
+        sci.nonfree_liability   = row[4]
+        sci.minority_interests  = row[5]
+        sci.EBIT       = row[6]
+        sci.market_cap = row[7] 
+    
+        # 指标一：ROC = EBIT /（净营运资本 + 固定资产）
+        a = sci.net_op_cap + sci.fixed_assets 
+        if 0 == a:
+            print "WARN!!! %s 的'运营资本+固定资产'为0， 指标1 做 0 处理" % sci.code
+            sci.ROC = 0
+        else:
+            sci.ROC = sci.EBIT / a
+
+        # 指标二：EY = EBIT /（总市值 + 带息负债 + 其他权益工具 + 少数股东权益）
+        b = sci.market_cap * 100000000 + sci.nonfree_liability + sci.minority_interests 
+        sci.EY = sci.EBIT / b
+
+        sci_list.append(sci)
+
+    return sci_list

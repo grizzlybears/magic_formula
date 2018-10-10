@@ -12,3 +12,50 @@ def is_yyyy_mm_dd (s):
 
     return  re.match( '^\d{4}-\d{2}-\d{2}$' , s )
 
+
+# 代码, 报表期末日,净运营资本，固定资产，有息负债，少数股东权益，EBIT，市值
+class StockCandidatorInfo:
+    #股票代码 
+    code       = "" 
+
+    #成份生成年
+    year       = 0
+
+    #成份生成月
+    month      = 0
+
+    #报告期末日
+    stat_end   = ""
+
+    net_op_cap         = 0.0
+    fixed_assets       = 0.0
+    nonfree_liability  = 0.0
+    minority_interests = 0.0
+    EBIT               = 0.0
+    market_cap         = 0.0
+
+    ROC = 0.0
+    EY  = 0.0
+
+    #基于 ROC 的排名
+    rank_roc = 0
+
+    #基于 EY的排名
+    rank_ey = 0
+
+    #总体排名
+    rank_final= 0
+
+    def __repr__(self):
+        if  self.ROC == 0:
+            rr = 0
+        else: 
+            rr = 1 / self.ROC
+        s = "%s [%s] ROC=%f(%f) EY=%f rank:%d/%d/%d" % (  
+                self.code, self.stat_end
+                , self.ROC ,rr
+                , self.EY  
+                , self.rank_roc , self.rank_ey, self.rank_final 
+                )
+        return s
+

@@ -134,7 +134,7 @@ def fetch_magic_candidators(engine,t_day):
     # （1）非 ST、*ST 股票，非暂停上市股票； （2）非金融类股票。
     
     all_stocks = list( jq.get_all_securities(types=['stock'], date= t_day ).index)
-    all_stocks = all_stocks[:100]
+    #all_stocks = all_stocks[:100]
 
 
     # 排除金融类的股票
@@ -178,6 +178,64 @@ def fetch_magic_candidators(engine,t_day):
 
     return filtered_3 
 
+def cmp_roc( a, b):
+    #先对 ROC 的倒数进行升序排列
+    #再对其中为负的部分进行降序排列，得到每只股票的 ROC 排名
+
+    if a.ROC == 0:
+        ra = 0
+    else:
+        ra = 1 / a.ROC
+
+    if b.ROC == 0:
+        rb = 0
+    else:
+        rb = 1 / b.ROC
+
+    if ra < 0:
+        if rb < 0:
+            if ra < rb:
+                return 1
+            elif ra == rb:
+                return 0
+            else:
+                return -1
+        else:
+            return -1
+    elif ra == 0:
+        if rb < 0:
+            return 1
+        elif rb == 0:
+            return 0
+        else:
+            return -1
+    else:
+        if rb < 0:
+            return 1
+        elif rb == 0:
+            return 1
+        else:
+            if ra < rb:
+                return -1
+            elif ra == rb:
+                return 0
+            else:
+                return 1
+
+def cmp_ey( a, b):
+    #对 EY 进行降序排列，得到每只股票的 EY 排名
+
+    if a.EY < b.EY:
+        return 1
+    elif a.EY == b.EY:
+        return 0
+    else:
+        return -1
+
+def cmp_magic( a, b):
+    return a.rank_roc + a.rank_ey - b.rank_roc - b.rank_ey 
+
+
 # 编制成份列表
 def build_composition_list(engine, y, m, t_day):
 
@@ -198,21 +256,27 @@ def build_composition_list(engine, y, m, t_day):
     print "利润表统计区间 [ %s ~ %s ]" % (stat_start , stat_end )
     db_operator.create_tmp_EBIT( conn, stat_start , stat_end )
 
-    ymd = '%d-%02d-%02d' % (t_day.year, t_day.month, t_day.day  )
+    stock_list = db_operator. db_fetch_stock_statements(conn, stat_end, t_day, y, m)
+
+    #util.bp( stock_list)
+
+    sorted_by_roc = sorted( stock_list, cmp= cmp_roc)
+    for i, sci in  enumerate( sorted_by_roc):
+        sci.rank_roc = i
+    #util.bp( sorted_by_roc)
+
+
+    sorted_by_ey = sorted( sorted_by_roc, cmp= cmp_ey) 
+    for i, sci in  enumerate( sorted_by_ey):
+        sci.rank_ey = i
+    #util.bp( sorted_by_ey)
+
     
-    s = '''
-select m.*,e.EBIT,v.market_cap
-from tmpEBIT e
-join vMagicBalance m on ( e.code = m.code and m.statDate= '%s' )
-join Valuation v on ( e.code = v.code and v.day = '%s' )
-            '''  % ( stat_end , ymd )
+    sorted_by_magic = sorted( sorted_by_ey, cmp= cmp_magic)  
+    for i, sci in  enumerate( sorted_by_magic):
+        sci.rank_final  = i
+    util.bp( sorted_by_magic)
 
-    #print s
-
-    r = conn.execute( alch_text(s) ).fetchall()
-
-    util.bp(r)
-    # 代码, 报表期末日,净运营资本，固定资产，有息负债，少数股东权益，EBIT，市值
 
 def get_1q_before (y,m):
     m = m - 3
