@@ -275,7 +275,11 @@ def build_composition_list(engine, y, m, t_day):
     sorted_by_magic = sorted( sorted_by_ey, cmp= cmp_magic)  
     for i, sci in  enumerate( sorted_by_magic):
         sci.rank_final  = i
-    util.bp( sorted_by_magic)
+
+
+    composition_list = sorted_by_magic[:80]
+    data_fetcher.fill_stock_name(  composition_list )
+    util.bp( composition_list )
 
 
 def get_1q_before (y,m):

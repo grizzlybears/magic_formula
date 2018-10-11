@@ -500,6 +500,14 @@ join Valuation v on ( e.code = v.code and v.day = '%s' )
         sci.minority_interests  = row[5]
         sci.EBIT       = row[6]
         sci.market_cap = row[7] 
+
+        if sci.net_op_cap is None:
+            print "WARN: %s 净运营资本为空，忽略" % sci.code
+            continue
+    
+        if sci.fixed_assets is None:
+            print "WARN: %s 固定资产为空，忽略" % sci.code
+            continue
     
         # 指标一：ROC = EBIT /（净营运资本 + 固定资产）
         a = sci.net_op_cap + sci.fixed_assets 
@@ -509,7 +517,20 @@ join Valuation v on ( e.code = v.code and v.day = '%s' )
         else:
             sci.ROC = sci.EBIT / a
 
-        # 指标二：EY = EBIT /（总市值 + 带息负债 + 其他权益工具 + 少数股东权益）
+        # 指标二：EY = EBIT /（总市值 + 带息负债 + 其他权益工具 + 少数股东权益） 
+        
+        if sci.market_cap  is None:
+            print "WARN: %s 总市值为空，忽略" % sci.code
+            continue
+    
+        if sci.nonfree_liability  is None:
+            print "WARN: %s 有息负债为空，忽略" % sci.code
+            continue 
+
+        if sci.minority_interests   is None:
+            print "WARN: %s 少数股东权益为空，忽略" % sci.code
+            continue
+    
         b = sci.market_cap * 100000000 + sci.nonfree_liability + sci.minority_interests 
         sci.EY = sci.EBIT / b
 

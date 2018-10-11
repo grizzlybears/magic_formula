@@ -17,6 +17,7 @@ def is_yyyy_mm_dd (s):
 class StockCandidatorInfo:
     #股票代码 
     code       = "" 
+    name       = ""
 
     #成份生成年
     year       = 0
@@ -51,8 +52,8 @@ class StockCandidatorInfo:
             rr = 0
         else: 
             rr = 1 / self.ROC
-        s = "%s [%s] ROC=%f(%f) EY=%f rank:%d/%d/%d" % (  
-                self.code, self.stat_end
+        s = "%s %s [%s] ROC=%f(%f) EY=%f rank:%d/%d/%d" % (  
+                self.code, self.name, self.stat_end
                 , self.ROC ,rr
                 , self.EY  
                 , self.rank_roc , self.rank_ey, self.rank_final 
