@@ -250,6 +250,25 @@ from BalanceSheetDay
     '''
     conn.execute( sql) 
 
+#记录成份列表
+def create_composition_list(conn):
+    sql= '''
+CREATE TABLE if not exists "CompositionList" (
+    year  Integer,
+    month Integer,
+    code  TEXT, 
+    t_day TEXT, 
+    name  TEXT,
+    ROC   float,
+    EY    float,
+    rank_roc integer,
+    rank_ey  integer,
+    rank_final integer
+    , PRIMARY KEY( year, month, code)
+);
+    '''
+    conn.execute( sql) 
+
 
 
  # 打开DB，并酌情建表，返回 sqlite3.Connection
@@ -262,7 +281,8 @@ def get_db_conn():
     create_income_table(conn)
     create_daily_line_table(conn)
     create_pause_table(conn)
-    
+    create_composition_list(conn)
+
     create_vMagicBalanace(conn)
 
     conn.commit()
@@ -537,3 +557,49 @@ join Valuation v on ( e.code = v.code and v.day = '%s' )
         sci_list.append(sci)
 
     return sci_list
+
+def db_save_composition_entry(conn, y, m,  entry):
+    
+    global s_metadata 
+
+    T_CompositionList = s_metadata.tables['CompositionList']
+
+    # entry 来自于  db_fetch_stock_statements
+
+    ins = T_CompositionList.insert().values( \
+            year = y
+            , month = m
+            , code = entry.code
+            , t_day = entry.stat_end 
+            , name = entry.name
+            , ROC = entry.ROC
+            , EY  = entry.EY
+            , rank_roc = entry.rank_roc
+            , rank_ey  = entry.rank_ey
+            , rank_final = entry.rank_final 
+            )
+
+    r = conn.execute( ins )
+
+
+def db_save_composition_list(conn, year, month, composition_list):
+    trans = conn.begin()
+    try:
+        s = alch_text(
+            '''
+            delete from CompositionList
+            where year = :y and month = :m 
+            '''
+            )
+
+        conn.execute( s, y  = year, m = month)
+ 
+        for entry in composition_list:
+            db_save_composition_entry( conn, year, month, entry)
+            
+        trans.commit()
+    except Exception as e:
+        trans.rollback()
+        raise e
+
+

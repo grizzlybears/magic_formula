@@ -22,6 +22,9 @@ from   sqlalchemy.sql  import text   as alch_text
 
 import util
 
+s_nofetch = False 
+
+
 def list_all_sec():
     r = jq.get_all_securities()
     pd.set_option('display.max_rows', len(r))
@@ -277,9 +280,12 @@ def build_composition_list(engine, y, m, t_day):
         sci.rank_final  = i
 
 
-    composition_list = sorted_by_magic[:80]
+    composition_list = sorted_by_magic[:10]
     data_fetcher.fill_stock_name(  composition_list )
     util.bp( composition_list )
+
+    db_operator.db_save_composition_list(conn, y,m , composition_list)
+
 
 
 def get_1q_before (y,m):
@@ -338,12 +344,20 @@ def fetch_season_income_sheet(engine,code, y,m , howmany):
         howmany = howmany - 1
 
 
-def fetch_fundamentals_1_year_may(engine, the_year, t_day):
+def fetch_fundamentals_1_year_may(engine, the_year, t_day): 
+    
+    global s_nofetch 
+    if s_nofetch:
+        print " make list of %s without fetch data from jq" % t_day
+        build_composition_list(engine, the_year, 3 , t_day)
+        return
+
     #准备每年5月的样本列表。
     print "make list of %s" % t_day
 
     candidators = fetch_magic_candidators( engine,  t_day)
     #print candidators 
+
 
     for code in candidators:
         #3月,一季报
@@ -373,7 +387,15 @@ def fetch_fundamentals_1_year_may(engine, the_year, t_day):
     build_composition_list(engine, the_year, 3 , t_day)
 
 
-def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
+def fetch_fundamentals_1_year_nov(engine, the_year, t_day): 
+    
+    global s_nofetch 
+    if s_nofetch:
+        print " make list of %s without fetch data from jq" % t_day
+        build_composition_list(engine, the_year, 3 , t_day)
+        return
+
+
     #准备每年11月的样本列表。
     print "make list of %s" % t_day
     
@@ -381,7 +403,7 @@ def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
     #        我们如果需要半年的数据，只有把先搞两个季报，然后自行叠加！
     
     candidators = fetch_magic_candidators( engine,  t_day) 
-    
+   
     for code in candidators:
 
         statDate, query_statDate  =  get_stat_and_query_date(the_year , 9 ) #9月，3季报 
@@ -523,6 +545,51 @@ def handle_fetch( argv, argv0 ):
         if start_year < 2005:
             print "开始年份必须不小于2005"
             return 1
+
+        fetch_fundamentals_until_now(engine, start_year)
+
+
+        #fetch_target_stock_fundamentals(engine, '000651.XSHE', '2017' )
+        
+        # real stuff
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+
+    return 0
+
+# 处理 'nofetch' 子命令 -- 不抓财报，只从DB数据生成成份列表
+def handle_nofetch( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005  # 沪深300从 2004年才开始有
+
+        i = len(argv)
+        if ( 1 == i  ):
+            start_year = int(argv[0])
+        else:
+            now = datetime.now()
+            start_year = now.year - 1
+
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        global s_nofetch 
+        s_nofetch = True
 
         fetch_fundamentals_until_now(engine, start_year)
 

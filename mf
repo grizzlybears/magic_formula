@@ -57,7 +57,9 @@ def main():
     if ('import' == sub_command ):
         return handle_import ( sys.argv[2:] )   
     elif ('fetch' == sub_command ):
-        return magic.handle_fetch ( sys.argv[2:], MY_NAME  )  
+        return magic.handle_fetch ( sys.argv[2:], MY_NAME  )   
+    elif ('nofetch' == sub_command ):
+        return magic.handle_nofetch ( sys.argv[2:], MY_NAME  )
     elif ('list' == sub_command ):
         return magic.handle_list ( sys.argv[2:], MY_NAME )   
     elif ('exper' == sub_command ):
