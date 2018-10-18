@@ -70,12 +70,12 @@ def get_daily_line(sec_code , t_start, t_end ):
     k = (sec_code , t_start, t_end )
 
     if k in daily_line_fetched:
-        print "    skip fetching daily line of %s, %s ~ %s" % ( sec_code, t_start, t_end  )
+        #print "    skip fetching daily line of %s, %s ~ %s" % ( sec_code, t_start, t_end  )
         return None
 
     daily_line_fetched[k] = 1 
 
-    print "    fetch daily line of %s, %s ~ %s" % ( sec_code, t_start, t_end  )
+    #print "    fetch daily line of %s, %s ~ %s" % ( sec_code, t_start, t_end  )
     df = jq.get_price(sec_code
             , start_date= t_start, end_date=t_end
             , frequency='daily'

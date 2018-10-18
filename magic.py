@@ -24,6 +24,13 @@ import util
 
 s_nofetch = False 
 
+COMPO_NUMBER = 80
+
+MAGIC_VOLUMN = 100 * 10000
+
+
+
+
 
 def list_all_sec():
     r = jq.get_all_securities()
@@ -280,7 +287,7 @@ def build_composition_list(engine, y, compo_m, stat_m, t_day):
         sci.rank_final  = i
 
 
-    composition_list = sorted_by_magic[:10]
+    composition_list = sorted_by_magic[ :COMPO_NUMBER ]
     data_fetcher.fill_stock_name(  composition_list )
     util.bp( composition_list )
 
@@ -351,10 +358,136 @@ def simu_buy( tr ):
     #print "%s %s at %f\n" % (tr.t_day, tr.code,  df.iloc[0]['close']) 
     trade_price = df.iloc[0]['close']
     tr.direction = 1
-    tr.volumn    = 100  # TODO: 真正的模拟指数需要‘等权’。然而如果要等权的买100股茅台，那么总体一手ETF的价值就是 80*100 股茅台，买不起啊
+
+    v = int( MAGIC_VOLUMN / COMPO_NUMBER / trade_price )
+    tr.volumn    = v  # TODO: 真正的模拟指数需要‘等权’。然而如果要等权的买100股茅台，那么总体一手ETF的价值就是 80*100 股茅台，买不起啊
+
+
+
     tr.price = trade_price 
     tr.amount =tr.volumn * tr.price 
 
+def get_cur_md(buy_list):
+    codes = []
+    for tr in buy_list:
+        codes.append( tr.code)
+
+    
+    today  = datetime.now().date()
+
+    start_d = today - timedelta(days = 15 )
+
+    p = jq.get_price(codes 
+            , start_date= start_d , end_date= today
+            , frequency='daily'
+            , fields='close'
+            , skip_paused=False
+            , fq='pre'
+            )
+
+    df = p['close']
+
+    row_num = len(df.index)
+
+    t_day = df.index[row_num -1].date()
+    # print t_day
+
+    position_list = []
+
+    for b in buy_list:
+        close_price = df[ b.code ][row_num -1 ]
+        #print "%s %f" % ( b.code , close_price  )
+
+        tr = data_struct.TradeRecord()
+
+        tr.code  = b.code 
+        tr.name  = b.name 
+        tr.t_day = t_day 
+        tr.direction = 0
+        tr.price  = close_price 
+        tr.volumn = b.volumn 
+        tr.amount = tr.volumn * tr.price 
+
+        position_list.append( tr )
+
+    return position_list 
+
+def simu_sell( tr, ideal_sell_day):
+    today  = datetime.now().date()
+    
+    start_d = ideal_sell_day
+    end_d = start_d + timedelta( days = 30 )
+    
+    while start_d < today:
+        df = jq.get_price( tr.code
+            , start_date= start_d ,  end_date= end_d
+            , frequency='daily'
+            , fields='close'
+            , skip_paused=True
+            , fq='pre'
+            )
+
+        row_num = len(df.index)
+
+        if row_num > 0:
+            #print df 
+            # yes, we found , just get 1st day
+            close_price = df.iloc[ 0]['close'] 
+
+            tr_s  = data_struct.TradeRecord()
+
+            tr_s.code  = tr.code 
+            tr_s.name  = tr.name 
+            tr_s.t_day = df.index[0].date() 
+            tr_s.direction = -1 
+            tr_s.price  = close_price 
+            tr_s.volumn = tr.volumn 
+            tr_s.amount = tr_s.volumn * tr_s.price
+
+            return tr_s
+        
+        start_d = end_d
+        end_d = start_d + timedelta( days = 30)
+ 
+    print "WARN!!! %s(%s) dosn't open to trade frpm %s" % ( tr.code, tr.name, ideal_sell_day  )
+    return None
+
+
+
+def get_sell_simu( buy_list , ideal_sell_day):
+
+    r = []
+    for b in buy_list:
+        tr = simu_sell( b ,  ideal_sell_day)
+        r.append( tr)
+
+    return r
+
+def backtest_1_year_nov(engine, the_year): 
+    print "回测 %d年十一月 的成份列表" % the_year
+
+    conn = engine.connect()
+
+    # 1. 先买入
+    buy_list = db_operator.db_fetch_composition_list(conn, the_year, 11 )
+    for tr in buy_list:
+        simu_buy(tr)
+
+    util.bp( buy_list)
+    
+    # 2. 再卖出
+    ideal_sell_day =  data_fetcher.get_t_day_in_mon( the_year + 1, 5 , 6)
+    if ideal_sell_day is None:
+        # 说明次年五月第六交易日还没到，则显示当前行情
+        result = get_cur_md(buy_list)
+
+    else:
+        # 试图在 ideal_sell_day 卖出
+        
+        result = get_sell_simu( buy_list , ideal_sell_day)
+
+    util.bp(result )
+    print       
 
 
 def backtest_1_year_may(engine, the_year): 
@@ -368,8 +501,22 @@ def backtest_1_year_may(engine, the_year):
     for tr in buy_list:
         simu_buy(tr)
 
-
     util.bp( buy_list)
+    
+    # 2. 再卖出
+    ideal_sell_day =  data_fetcher.get_t_day_in_mon( the_year, 11 , 6)
+
+    if ideal_sell_day is None:
+        # 说明当年11月第六交易日还没到，则显示当前行情
+        result = get_cur_md(buy_list)
+
+    else:
+        # 试图在 ideal_sell_day 卖出
+        
+        result = get_sell_simu( buy_list , ideal_sell_day)
+
+    util.bp(result )
+    print       
 
 
 

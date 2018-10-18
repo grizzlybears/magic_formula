@@ -86,7 +86,7 @@ class TradeRecord:
 
     def __repr__(self):
         if self.direction == 0:
-            direction = '未'
+            direction = '持仓'
         elif self.direction == 1:
             direction = '买'
         elif self.direction == -1:
