@@ -60,6 +60,8 @@ def main():
         return magic.handle_fetch ( sys.argv[2:], MY_NAME  )   
     elif ('nofetch' == sub_command ):
         return magic.handle_nofetch ( sys.argv[2:], MY_NAME  )
+    elif ('backtest' == sub_command ):
+        return magic.handle_backtest ( sys.argv[2:], MY_NAME  )
     elif ('list' == sub_command ):
         return magic.handle_list ( sys.argv[2:], MY_NAME )   
     elif ('exper' == sub_command ):

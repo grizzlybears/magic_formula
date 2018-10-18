@@ -122,9 +122,10 @@ def get_t_day_in_mon( y ,m , tday_no ):
     ts = (tt - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
     
     d = datetime.utcfromtimestamp( ts)
+
     #print d
 
-    return d
+    return d.date()
 
 # 查询某股票某天是否停牌
 def check_if_paused( code, t_day ):

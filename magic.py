@@ -240,12 +240,12 @@ def cmp_magic( a, b):
 
 
 # 编制成份列表
-def build_composition_list(engine, y, m, t_day):
+def build_composition_list(engine, y, compo_m, stat_m, t_day):
 
-    s,q = get_stat_and_query_date(y,m)
+    s,q = get_stat_and_query_date(y,stat_m)
     stat_end = q
 
-    s,q = get_stat_and_query_date_3q_before(y,m)
+    s,q = get_stat_and_query_date_3q_before(y,stat_m)
     stat_start = q
 
 
@@ -259,7 +259,7 @@ def build_composition_list(engine, y, m, t_day):
     print "利润表统计区间 [ %s ~ %s ]" % (stat_start , stat_end )
     db_operator.create_tmp_EBIT( conn, stat_start , stat_end )
 
-    stock_list = db_operator. db_fetch_stock_statements(conn, stat_end, t_day, y, m)
+    stock_list = db_operator. db_fetch_stock_statements(conn, stat_end, t_day, y, stat_m)
 
     #util.bp( stock_list)
 
@@ -284,7 +284,7 @@ def build_composition_list(engine, y, m, t_day):
     data_fetcher.fill_stock_name(  composition_list )
     util.bp( composition_list )
 
-    db_operator.db_save_composition_list(conn, y,m , composition_list)
+    db_operator.db_save_composition_list(conn, y, compo_m , t_day, composition_list)
 
 
 
@@ -344,12 +344,41 @@ def fetch_season_income_sheet(engine,code, y,m , howmany):
         howmany = howmany - 1
 
 
+def simu_buy( tr ):
+    df = data_fetcher.get_daily_line( tr.code , tr.t_day , tr.t_day )
+    
+    #print df
+    #print "%s %s at %f\n" % (tr.t_day, tr.code,  df.iloc[0]['close']) 
+    trade_price = df.iloc[0]['close']
+    tr.direction = 1
+    tr.volumn    = 100  # TODO: 真正的模拟指数需要‘等权’。然而如果要等权的买100股茅台，那么总体一手ETF的价值就是 80*100 股茅台，买不起啊
+    tr.price = trade_price 
+    tr.amount =tr.volumn * tr.price 
+
+
+
+def backtest_1_year_may(engine, the_year): 
+
+    print "回测 %d年五月 的成份列表" % the_year
+
+    conn = engine.connect()
+
+    # 1. 先买入
+    buy_list = db_operator.db_fetch_composition_list(conn, the_year, 5 )
+    for tr in buy_list:
+        simu_buy(tr)
+
+
+    util.bp( buy_list)
+
+
+
 def fetch_fundamentals_1_year_may(engine, the_year, t_day): 
     
     global s_nofetch 
     if s_nofetch:
         print " make list of %s without fetch data from jq" % t_day
-        build_composition_list(engine, the_year, 3 , t_day)
+        build_composition_list(engine, the_year ,5,  3 , t_day)
         return
 
     #准备每年5月的样本列表。
@@ -384,7 +413,7 @@ def fetch_fundamentals_1_year_may(engine, the_year, t_day):
             db_operator.record_valuation_df_to_db(engine, df)
 
 
-    build_composition_list(engine, the_year, 3 , t_day)
+    build_composition_list(engine, the_year,5,  3 , t_day)
 
 
 def fetch_fundamentals_1_year_nov(engine, the_year, t_day): 
@@ -392,7 +421,7 @@ def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
     global s_nofetch 
     if s_nofetch:
         print " make list of %s without fetch data from jq" % t_day
-        build_composition_list(engine, the_year, 3 , t_day)
+        build_composition_list(engine, the_year, 11,  9 , t_day)
         return
 
 
@@ -428,14 +457,14 @@ def fetch_fundamentals_1_year_nov(engine, the_year, t_day):
             df =  data_fetcher.get_valuation( code , t_day )
             db_operator.record_valuation_df_to_db(engine, df)
 
-    build_composition_list(engine, the_year, 3 , t_day)
+    build_composition_list(engine, the_year, 11, 9 , t_day)
 
 #为了进行'the_year'的调仓，收集基本数据
 def fetch_fundamentals_1_year(engine, the_year):
     #中证价值回报量化策略指数的样本股每半年调整一次
     #样本股调整实施日为每年5月和11月的第六个交易日。
 
-    today  = datetime.now()
+    today  = datetime.now().date()
 
     if today.year < the_year:
         t_day = data_fetcher.get_t_day_in_mon( the_year, 5 , 6)
@@ -460,6 +489,36 @@ def fetch_fundamentals_1_year(engine, the_year):
         return
   
     fetch_fundamentals_1_year_nov(engine, the_year,t_day)
+    
+    return 
+
+
+def backtest_1_year(engine, the_year):
+    #中证价值回报量化策略指数的样本股每半年调整一次
+    #样本股调整实施日为每年5月和11月的第六个交易日。
+
+    today  = datetime.now().date()
+
+    if today.year < the_year:
+        backtest_1_year_may(engine, the_year, t_day)
+        
+        backtest_1_year_nov(engine, the_year, t_day)
+        return
+
+    # 检查是否需要回测今年5月的样本列表
+    t_day = data_fetcher.get_t_day_in_mon( the_year, 5 , 6)
+    if t_day is None or today <= t_day:
+        return
+    
+    backtest_1_year_may(engine, the_year )
+      
+    # 检查是否需要回测今年11月的样本列表
+    t_day = data_fetcher.get_t_day_in_mon( the_year, 11, 6)
+ 
+    if t_day is None or today <= t_day:
+        return
+  
+    backtest_1_year_nov(engine, the_year)
     
     return 
 
@@ -513,6 +572,14 @@ def fetch_fundamentals_until_now(engine, start_year):
 
     for y in range( start_year, now.year + 1):
         fetch_fundamentals_1_year( engine, y)
+
+def backtest_until_now(engine, start_year):
+    
+    now = datetime.now()
+
+    for y in range( start_year, now.year + 1):
+        backtest_1_year( engine, y)
+
 
 
 def list_index_until_now(code, start_year):
@@ -597,6 +664,43 @@ def handle_nofetch( argv, argv0 ):
         #fetch_target_stock_fundamentals(engine, '000651.XSHE', '2017' )
         
         # real stuff
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+
+    return 0
+
+# 处理 'backtest' 子命令 -- 根据DB中的成份列表回测
+def handle_backtest( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005  # 沪深300从 2004年才开始有
+
+        i = len(argv)
+        if ( 1 == i  ):
+            start_year = int(argv[0])
+        else:
+            now = datetime.now()
+            start_year = now.year - 1
+
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        backtest_until_now(engine, start_year)
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()

@@ -60,3 +60,48 @@ class StockCandidatorInfo:
                 )
         return s
 
+
+class TradeRecord:
+    #股票代码 
+    code       = "" 
+    name       = ""
+
+    #交易日
+    t_day   = ""
+
+    #买卖方向, 1:买, -1卖 
+    direction = 0
+
+    #成交股数
+    volumn = 0
+
+    #单价
+    price = 0.0
+
+    #成交金额 
+    amount = 0.0
+
+    #交易成本
+    fee = 0.0
+
+    def __repr__(self):
+        if self.direction == 0:
+            direction = '未'
+        elif self.direction == 1:
+            direction = '买'
+        elif self.direction == -1:
+            direction = '卖'
+        else:
+            direction = '非法交易方向'
+
+
+        s = "%s %s %s(%s) %d股，价 = %f，成交金额 = %f" % ( 
+                self.t_day  
+                , direction 
+                , self.code,  self.name 
+                , self.volumn 
+                , self.price , self.amount 
+                )
+
+        return s
+

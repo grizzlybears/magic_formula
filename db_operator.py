@@ -269,6 +269,34 @@ CREATE TABLE if not exists "CompositionList" (
     '''
     conn.execute( sql) 
 
+# 模拟交易
+def create_simu_trade(conn):
+    sql= '''
+CREATE TABLE if not exists "SimuTrade" (
+    year  Integer,
+    month Integer,
+    code  TEXT, 
+    t_day TEXT, 
+    name  TEXT,
+    direction integer,
+    volumn  integer,
+    price   float,
+    amount  float,
+    fee     float
+);
+    '''
+    conn.execute( sql) 
+
+    sql= '''
+CREATE index if not exists "ind_SimuTrade" on SimuTrade (
+    t_day TEXT, 
+    code  TEXT, 
+    direction integer
+);
+    '''
+    conn.execute( sql) 
+
+
 
 
  # 打开DB，并酌情建表，返回 sqlite3.Connection
@@ -558,7 +586,7 @@ join Valuation v on ( e.code = v.code and v.day = '%s' )
 
     return sci_list
 
-def db_save_composition_entry(conn, y, m,  entry):
+def db_save_composition_entry(conn, y, compo_m, t_day,  entry):
     
     global s_metadata 
 
@@ -568,9 +596,9 @@ def db_save_composition_entry(conn, y, m,  entry):
 
     ins = T_CompositionList.insert().values( \
             year = y
-            , month = m
+            , month = compo_m
             , code = entry.code
-            , t_day = entry.stat_end 
+            , t_day = t_day
             , name = entry.name
             , ROC = entry.ROC
             , EY  = entry.EY
@@ -582,7 +610,7 @@ def db_save_composition_entry(conn, y, m,  entry):
     r = conn.execute( ins )
 
 
-def db_save_composition_list(conn, year, month, composition_list):
+def db_save_composition_list(conn, year, compo_m, t_day,  composition_list):
     trans = conn.begin()
     try:
         s = alch_text(
@@ -592,14 +620,40 @@ def db_save_composition_list(conn, year, month, composition_list):
             '''
             )
 
-        conn.execute( s, y  = year, m = month)
+        conn.execute( s, y  = year, m = compo_m  )
  
         for entry in composition_list:
-            db_save_composition_entry( conn, year, month, entry)
+            db_save_composition_entry( conn, year, compo_m , t_day, entry)
             
         trans.commit()
     except Exception as e:
         trans.rollback()
         raise e
+
+def db_fetch_composition_list(conn, y, m ):
+    
+    s = '''
+select code, name, t_day
+from CompositionList 
+where year = %d and month = %d
+            '''  % ( y , m )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    # 代码, 名称，交易日
+    # 0     1          2
+
+    tr_list = []
+
+    for row in r:
+        tr = data_struct.TradeRecord()
+
+        tr.code  = row[0]
+        tr.name  = row[1]
+        tr.t_day = row[2]
+        
+        tr_list.append( tr )
+
+    return tr_list
 
 
