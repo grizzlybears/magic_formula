@@ -351,6 +351,21 @@ def fetch_season_income_sheet(engine,code, y,m , howmany):
         howmany = howmany - 1
 
 
+def sum_buy_list( buy_list):
+    s = 0.0
+    for tr in buy_list:
+        s = s + tr.amount + tr.fee 
+
+    return s 
+
+def sum_sell_list( sell_list):
+    s = 0.0
+    for tr in sell_list:
+        s = s + tr.amount - tr.fee 
+
+    return s 
+
+
 def simu_buy( tr ):
     df = data_fetcher.get_daily_line( tr.code , tr.t_day , tr.t_day )
     
@@ -450,8 +465,49 @@ def simu_sell( tr, ideal_sell_day):
         end_d = start_d + timedelta( days = 30)
  
     print "WARN!!! %s(%s) dosn't open to trade frpm %s" % ( tr.code, tr.name, ideal_sell_day  )
-    return None
+ 
+    #试图获取停牌前最后交易日的价格
+    df = jq.get_price( tr.code
+            , start_date= tr.t_day,  end_date= ideal_sell_day
+            , frequency='daily'
+            , fields='close'
+            , skip_paused=True
+            , fq='pre'
+            )
+    row_num = len(df.index)
 
+    if row_num ==0 :
+
+        print "WARN!!! %s(%s) even dosn't open to trade frpm %s" % ( 
+            tr.code
+            , tr.name
+            , tr.t_day
+            )
+
+        tr_s  = data_struct.TradeRecord()
+
+        tr_s.code  = tr.code 
+        tr_s.name  = tr.name 
+        tr_s.t_day = today 
+        tr_s.direction = 0
+        tr_s.price  = tr.price
+        tr_s.volumn = tr.volumn 
+        tr_s.amount = tr_s.volumn * tr_s.price
+
+        return tr_s
+
+    close_price = df.iloc[ row_num - 1]['close'] 
+
+    tr_s  = data_struct.TradeRecord()
+    tr_s.code  = tr.code 
+    tr_s.name  = tr.name 
+    tr_s.t_day = df.index[ row_num -1].date() 
+    tr_s.direction = 0 
+    tr_s.price  = close_price 
+    tr_s.volumn = tr.volumn 
+    tr_s.amount = tr_s.volumn * tr_s.price
+
+    return tr_s
 
 
 def get_sell_simu( buy_list , ideal_sell_day):
@@ -486,7 +542,21 @@ def backtest_1_year_nov(engine, the_year):
         
         result = get_sell_simu( buy_list , ideal_sell_day)
 
-    util.bp(result )
+    util.bp(result ) 
+    
+    
+    total_b = sum_buy_list(buy_list)
+    total_s = sum_sell_list(result)
+    profit = total_s - total_b 
+
+    print "== %d年十一月 的成份列表，总买 %.2f, 总卖 %.2f, 盈亏 %.2f (%.2f%%) ==" % ( 
+            the_year
+            , total_b 
+            , total_s 
+            , profit 
+            , profit / total_b * 100
+            )
+ 
     print       
 
 
@@ -516,6 +586,19 @@ def backtest_1_year_may(engine, the_year):
         result = get_sell_simu( buy_list , ideal_sell_day)
 
     util.bp(result )
+    
+    total_b = sum_buy_list(buy_list)
+    total_s = sum_sell_list(result)
+    profit = total_s - total_b 
+
+    print "== %d年五月 的成份列表，总买 %.2f, 总卖 %.2f, 盈亏 %.2f (%.2f%%) ==" % ( 
+            the_year
+            , total_b 
+            , total_s 
+            , profit 
+            , profit / total_b * 100
+            )
+    
     print       
 
 
