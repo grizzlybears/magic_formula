@@ -276,22 +276,29 @@ CREATE TABLE if not exists "SimuTrade" (
     year  Integer,
     month Integer,
     code  TEXT, 
-    t_day TEXT, 
     name  TEXT,
-    direction integer,
-    volumn  integer,
-    price   float,
-    amount  float,
-    fee     float
+    t_day1     TEXT, 
+    direction1 integer,
+    volumn1    integer,
+    price1     float,
+    amount1    float,
+    fee1       float,
+    t_day2     TEXT, 
+    direction2 integer,
+    volumn2    integer,
+    price2     float,
+    amount2    float,
+    fee2       float,
+    profit_r   float
 );
     '''
     conn.execute( sql) 
 
     sql= '''
-CREATE index if not exists "ind_SimuTrade" on SimuTrade (
-    t_day TEXT, 
-    code  TEXT, 
-    direction integer
+CREATE unique index if not exists "ind_SimuTrade" on SimuTrade (
+    year, 
+    month, 
+    code
 );
     '''
     conn.execute( sql) 
@@ -312,6 +319,8 @@ def get_db_conn():
     create_composition_list(conn)
 
     create_vMagicBalanace(conn)
+
+    create_simu_trade(conn)
 
     conn.commit()
 
@@ -636,6 +645,7 @@ def db_fetch_composition_list(conn, y, m ):
 select code, name, t_day
 from CompositionList 
 where year = %d and month = %d
+order by code
             '''  % ( y , m )
 
     r = conn.execute( alch_text(s) ).fetchall()
@@ -656,4 +666,79 @@ where year = %d and month = %d
 
     return tr_list
 
+def db_save_simu_trade_entry(conn, y, m, buy_entry,  sell_entry ): 
+    global s_metadata 
 
+    T_SimuTrade = s_metadata.tables['SimuTrade']
+
+    # entry 来自于  db_fetch_stock_statements
+
+    pr= (sell_entry.amount - buy_entry.amount) / buy_entry.amount 
+
+    ins = T_SimuTrade.insert().values( \
+            year = y
+            , month = m
+            , code =  buy_entry.code
+            , name =  buy_entry.name
+            , t_day1 = buy_entry.t_day
+            , direction1 = buy_entry.direction 
+            , volumn1    = buy_entry.volumn 
+            , price1     = buy_entry.price 
+            , amount1    = buy_entry.amount
+            , fee1       = buy_entry.fee 
+            , t_day2     = sell_entry.t_day
+            , direction2 = sell_entry.direction 
+            , volumn2    = sell_entry.volumn 
+            , price2     = sell_entry.price 
+            , amount2    = sell_entry.amount
+            , fee2       = sell_entry.fee 
+            , profit_r   = pr
+            )
+
+    r = conn.execute( ins )
+
+
+    return 
+
+def db_save_simu_trade_list(conn, year, month, buy_list, sell_list ): 
+    trans = conn.begin()
+    try:
+        s = alch_text(
+            '''
+            delete from SimuTrade
+            where year = :y and month = :m 
+            '''
+            )
+
+        conn.execute( s, y  = year, m = month  )
+ 
+        lb = len(buy_list)
+        ls = len(sell_list)
+
+        if lb != ls:
+            raise Exception("Error %年%月，买%d条，卖%d条！" \
+                    , year, month 
+                    , lb, ls
+                    )
+
+        for i in range(lb):
+            b = buy_list[i]
+            s = sell_list[i]
+
+            if b.code != s.code :
+                raise Exception ("Error %年%月，第%d行, 买%s，卖%s！" \
+                    , year, month 
+                    , i
+                    , b.code, s.code
+                    )
+
+            db_save_simu_trade_entry(conn, year, month, b ,s )
+            
+
+        trans.commit()
+    except Exception as e:
+        trans.rollback()
+        raise e
+
+
+    return
