@@ -24,13 +24,20 @@ import util
 
 s_nofetch = False 
 
+MF_MODE = 0   # 0: classic magic formula, 1: 'MF2'
+
+MF_NetValue = 1
+
 COMPO_NUMBER = 80
 
 MAGIC_VOLUMN = 100 * 10000
 
 
-
-
+MF2_COMPO_NUMBER2    = 80  # 成份数量
+MF2_BACK_TRACE_YEARS = 2   # 追溯以往多少年的财报
+MF2_CANDI_THRESHOLD  = 80  # 进入TOP多少才是候选
+MF2_COMPO_THRESHOLD  = 2   # 追溯期进入多少次候选才是成份
+MF2_Q=[]
 
 def list_all_sec():
     r = jq.get_all_securities()
@@ -245,6 +252,17 @@ def cmp_ey( a, b):
 def cmp_magic( a, b):
     return a.rank_roc + a.rank_ey - b.rank_roc - b.rank_ey 
 
+def check_back( q, code):
+    count = 0
+    for l in q:
+        for entry in l:
+            if entry.code == code:
+                count = count +1
+                break
+
+    return count
+
+
 
 # 编制成份列表
 def build_composition_list(engine, y, compo_m, stat_m, t_day):
@@ -286,13 +304,51 @@ def build_composition_list(engine, y, compo_m, stat_m, t_day):
     for i, sci in  enumerate( sorted_by_magic):
         sci.rank_final  = i
 
+    global MF_MODE
 
-    composition_list = sorted_by_magic[ :COMPO_NUMBER ]
-    data_fetcher.fill_stock_name(  composition_list )
-    util.bp( composition_list )
+    if MF_MODE == 0:
 
-    db_operator.db_save_composition_list(conn, y, compo_m , t_day, composition_list)
+        composition_list = sorted_by_magic[ :COMPO_NUMBER ]
+        data_fetcher.fill_stock_name(  composition_list )
+        util.bp( composition_list )
 
+        db_operator.db_save_composition_list(conn, y, compo_m , t_day, composition_list)
+    elif MF_MODE == 1:
+        global MF2_Q
+
+        if len(MF2_Q) < 2 * MF2_BACK_TRACE_YEARS:
+            # 还在追溯财报阶段
+            candi_list = sorted_by_magic[ :MF2_CANDI_THRESHOLD  ]
+            MF2_Q.append( candi_list )
+        else:
+            # 编制当期成份列表
+            compo_number = 0
+            
+            composition_list = []
+
+            for entry in sorted_by_magic [ :MF2_CANDI_THRESHOLD  ]:
+                c = check_back( MF2_Q, entry.code)
+                if c >= MF2_COMPO_THRESHOLD :
+                    #经过历史考验，纳入本期成份
+                    composition_list.append(entry)
+
+                    #compo_number = compo_number + 1
+                    #if compo_number == MF2_COMPO_NUMBER2:
+                    #    break 
+
+            del MF2_Q[0]
+            candi_list = sorted_by_magic[ :MF2_CANDI_THRESHOLD  ]
+            MF2_Q.append( candi_list )
+            
+            data_fetcher.fill_stock_name(  composition_list )
+            util.bp( composition_list )
+            #print "%d-%d:  %d compo" % ( y, compo_m, len(composition_list))
+            
+            db_operator.db_save_composition_list(conn, y, compo_m , t_day, composition_list)
+            #raise Exception("aa")
+    
+    else:
+        raise Exception( "Invalid 'MF_MODE'! ")
 
 
 def get_1q_before (y,m):
@@ -592,6 +648,8 @@ def backtest_1_year_may(engine, the_year):
     total_s = sum_sell_list(result)
     profit = total_s - total_b 
 
+    global MF_NetValue
+    MF_NetValue = MF_NetValue * ( 1 + profit  / total_b )
 
 
     print "== %d年五月 的成份列表，总买 %.2f, 总卖 %.2f, 盈亏 %.2f (%.2f%%) ==" % ( 
@@ -913,6 +971,58 @@ def handle_nofetch( argv, argv0 ):
 
     return 0
 
+
+# 处理 'nofetch2' 子命令 -- 不抓财报，只从DB数据生成成份列表
+# 考察前两年的财报，要求近五届(前两年四届，当期一届)内有三次入top80才进入成份, 成份取50个
+def handle_nofetch2( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+
+        start_year = 2008   # 沪深300从 2004年才开始有
+
+        i = len(argv)
+        if ( 1 == i  ):
+            start_year = int(argv[0])
+        else:
+            now = datetime.now()
+            start_year = now.year - 1
+
+        if start_year < 2008:
+            print "开始年份必须不小于2008"
+            return 1
+
+        global s_nofetch 
+        s_nofetch = True
+
+        global MF_MODE 
+        MF_MODE = 1
+
+        fetch_fundamentals_until_now(engine, start_year - MF2_BACK_TRACE_YEARS  )
+
+
+        #fetch_target_stock_fundamentals(engine, '000651.XSHE', '2017' )
+        
+        # real stuff
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+
+    return 0
+
+
 # 处理 'backtest' 子命令 -- 根据DB中的成份列表回测
 def handle_backtest( argv, argv0 ): 
     try:
@@ -938,6 +1048,9 @@ def handle_backtest( argv, argv0 ):
 
         backtest_until_now(engine, start_year)
 
+        global MF_NetValue 
+        print "== 最终净值 %f ==" % MF_NetValue
+
     except  Exception as e:
         (t, v, bt) = sys.exc_info()
         traceback.print_exception(t, v, bt)
@@ -953,7 +1066,7 @@ def handle_backtest( argv, argv0 ):
 
 
 # 处理 'list' 子命令
-def handle_list( argv, argv0  ): 
+def handle_list_index( argv, argv0  ): 
     try:
         i = len(argv)
         if ( 1 == i  ):
