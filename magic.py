@@ -605,6 +605,10 @@ def backtest_1_year_nov(engine, the_year):
     total_s = sum_sell_list(result)
     profit = total_s - total_b 
 
+    global MF_NetValue
+    MF_NetValue = MF_NetValue * ( total_s  / total_b )
+
+
     print "== %d年十一月 的成份列表，总买 %.2f, 总卖 %.2f, 盈亏 %.2f (%.2f%%) ==" % ( 
             the_year
             , total_b 
@@ -649,7 +653,7 @@ def backtest_1_year_may(engine, the_year):
     profit = total_s - total_b 
 
     global MF_NetValue
-    MF_NetValue = MF_NetValue * ( 1 + profit  / total_b )
+    MF_NetValue = MF_NetValue * ( total_s  / total_b )
 
 
     print "== %d年五月 的成份列表，总买 %.2f, 总卖 %.2f, 盈亏 %.2f (%.2f%%) ==" % ( 
@@ -659,7 +663,6 @@ def backtest_1_year_may(engine, the_year):
             , profit 
             , profit / total_b * 100
             )
-    
     print 
 
     db_operator.db_save_simu_trade_list( conn, the_year, 5 , buy_list, result  )
