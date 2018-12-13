@@ -870,9 +870,62 @@ def fetch_fundamentals_until_now(engine, start_year):
     for y in range( start_year, now.year + 1):
         fetch_fundamentals_1_year( engine, y)
 
+
+def fetch_index_compo_dailyline_1_day(engine, index_code,t_day):
+    # 取该日指数成份
+    compo_list = jq.get_index_stocks( index_code, date = t_day)
+
+    # 抓行情
+    pn = jq.get_price(compo_list 
+            , start_date= t_day, end_date=t_day
+            , frequency='daily'
+            , fields=['open', 'close', 'high', 'low', 'volume', 'money', 'high_limit', 'low_limit', 'pre_close', 'paused']
+            , skip_paused=False
+            , fq='pre'
+            )
+
+    #print pn
+
+    df_open  = pn['open']
+    df_close = pn['close']
+    df_high  = pn['high']
+    df_low   = pn['low']
+    df_volume = pn['volume']
+    df_money  = pn['money']
+    df_high_limit = pn['high_limit']
+    df_low_limit  = pn['low_limit']
+    df_pre_close  = pn['pre_close']
+    df_paused     = pn['paused']
+
+    for one_compo in compo_list:
+        print "%s, %s : open=%f close=%f paused=%d" % (t_day, one_compo, df_open[one_compo].iloc[0],df_close[one_compo].iloc[0] ,  df_paused[one_compo].iloc[0]   )
+
+
+    print
+
+def fetch_index_dailyline_until_now(engine, index_code ,start_year):
+    now = datetime.now()
+
+    
+    #1. 抓指数自身的日线
+    #t_start  = "%d-01-01" % start_year 
+    t_start  = "%d-12-11" % start_year 
+    df_50_his = data_fetcher.get_daily_line( index_code , t_start, now)
+    db_operator.save_daily_line_to_db( engine, index_code , df_50_his) 
+
+    #2. 抓指数成份股的日线
+    all_t_day = df_50_his['t_day']
+    for one_day in all_t_day:
+        # 成份列表有可能发生临时调整，只能每天都抓
+        fetch_index_compo_dailyline_1_day(engine, index_code, one_day)
+        
+
+
 def backtest_until_now(engine, start_year):
     
     now = datetime.now()
+
+    df_50_his = data_fetcher.get_daily_line()
 
     for y in range( start_year, now.year + 1):
         backtest_1_year( engine, y)
@@ -1166,6 +1219,48 @@ def handle_exper( argv, argv0  ):
         return 1 
     finally:
         pass
+
+    return 0
+
+# 处理 'fetch50' 子命令
+def handle_fetch50( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005  # 上证50从 2004年才开始有
+
+        i = len(argv)
+        if ( 1 == i  ):
+            start_year = int(argv[0])
+        else:
+            now = datetime.now()
+            start_year = now.year - 1
+
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        fetch_index_dailyline_until_now(engine,'000016.XSHG', start_year)
+
+
+        #fetch_target_stock_fundamentals(engine, '000651.XSHE', '2017' )
+        
+        # real stuff
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
 
     return 0
 

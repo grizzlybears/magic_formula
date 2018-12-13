@@ -79,7 +79,8 @@ def get_daily_line(sec_code , t_start, t_end ):
     df = jq.get_price(sec_code
             , start_date= t_start, end_date=t_end
             , frequency='daily'
-            , fields=None
+               #  默认是None(表示[‘open’, ‘close’, ‘high’, ‘low’, ‘volume’, ‘money’]这几个标准字段)
+            , fields=['open', 'close', 'high', 'low', 'volume', 'money', 'high_limit', 'low_limit', 'pre_close', 'paused']
             , skip_paused=False
             , fq='pre'
             )

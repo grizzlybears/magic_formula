@@ -218,7 +218,11 @@ CREATE TABLE if not exists "DailyLine" (
     high FLOAT, 
     low FLOAT, 
     volume FLOAT, 
-    money FLOAT
+    money FLOAT,
+    high_limit FLOAT,
+    low_limit  FLOAT,
+    pre_close  FLOAT,
+    paused     INT
     , PRIMARY KEY( code, t_day)
 );
     '''

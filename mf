@@ -54,8 +54,9 @@ def main():
 
     sub_command = sys.argv[1]
 
-    if ('import' == sub_command ):
-        return handle_import ( sys.argv[2:] )   
+    if ('help' == sub_command ):
+        print_usage()
+        return 1
     elif ('fetch' == sub_command ):
         return magic.handle_fetch ( sys.argv[2:], MY_NAME  )   
     elif ('nofetch' == sub_command ):
@@ -68,9 +69,8 @@ def main():
         return magic.handle_list_index ( sys.argv[2:], MY_NAME )   
     elif ('exper' == sub_command ):
         return magic.handle_exper ( sys.argv[2:], MY_NAME )  
-    elif ('help' == sub_command ):
-        print_usage()
-        return 1
+    elif ('fetch50' == sub_command ):
+        return magic.handle_fetch50 ( sys.argv[2:], MY_NAME  )   
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()
