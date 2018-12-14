@@ -426,7 +426,47 @@ def record_paused(engine, code, t_day, is_paused ):
     ins = T_IsPaused.insert().values(code = code, t_day = yyyymmdd, is_paused = is_paused)
 
     r = conn.execute( ins )
-    
+
+def db_save_dailyline(engine, code, t_day, open_,close_,high, low,volume,money, high_limit, low_limit, pre_close, paused ):
+
+    conn = engine.connect()
+
+    global s_metadata 
+    #print s_metadata.tables
+
+    T_Dailyline = s_metadata.tables['DailyLine']
+ 
+    trans = conn.begin()
+    try:
+        s = alch_text(
+            '''
+            delete from DailyLine 
+            where t_day  = :t and code = :c 
+            '''
+            )
+
+        conn.execute( s, t  = t_day, c = code)
+ 
+        ins = T_Dailyline.insert().values(
+            code = code
+            , t_day = t_day
+            , open = open_ 
+            , close = close_ 
+            , high = high
+            , low = low
+            , volume = volume
+            , money = money
+            , high_limit = high_limit
+            , low_limit  = low_limit
+            , pre_close  = pre_close
+            , paused = paused
+            )
+        r = conn.execute( ins )
+     
+        trans.commit()
+    except Exception as e:
+        trans.rollback()
+        raise e
 
 def query_balancesheet(engine, code, statDate ):
 

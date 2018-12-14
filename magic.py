@@ -900,6 +900,20 @@ def fetch_index_compo_dailyline_1_day(engine, index_code,t_day):
     for one_compo in compo_list:
         print "%s, %s : open=%f close=%f paused=%d" % (t_day, one_compo, df_open[one_compo].iloc[0],df_close[one_compo].iloc[0] ,  df_paused[one_compo].iloc[0]   )
 
+        db_operator.db_save_dailyline(engine
+                , one_compo 
+                , t_day
+                , df_open[one_compo].iloc[0]
+                , df_close[one_compo].iloc[0]
+                , df_high[one_compo].iloc[0]
+                , df_low[one_compo].iloc[0]
+                , df_volume[one_compo].iloc[0]
+                , df_money[one_compo].iloc[0]
+                , df_high_limit[one_compo].iloc[0]
+                , df_low_limit[one_compo].iloc[0]
+                , df_pre_close[one_compo].iloc[0]
+                , df_paused[one_compo].iloc[0]
+                )
 
     print
 
