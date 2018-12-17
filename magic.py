@@ -1,25 +1,26 @@
 ## -*- coding: utf-8 -*-
-import sys
 
+# py系统包
+import sys
 import site
 import traceback
-
 from datetime import date,datetime,timedelta
-
 import codecs
 import csv
+import collections
 
-import data_struct 
-
-import  jqdatasdk as jq
-import  pandas as pd
-
-import db_operator
-import data_fetcher
-
+# 著名扩展包
 from   sqlalchemy.sql  import select as alch_select
 from   sqlalchemy.sql  import text   as alch_text
+import  pandas as pd
 
+# 其他第三方包
+import  jqdatasdk as jq
+
+# 我们的代码
+import data_struct 
+import db_operator
+import data_fetcher
 import util
 
 s_nofetch = False 
@@ -944,6 +945,76 @@ def backtest_until_now(engine, start_year):
         backtest_1_year( engine, y)
 
 
+# 返回时，数组his_md扩充为
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
+# 其中‘指标’ 是  [可买标志，三日累计涨幅]
+
+def make_indices_by_delta( conn, his_md ):
+
+    prev_md = collections.OrderedDict ()
+
+    for i, md_that_day  in enumerate(his_md):
+        indices = collections.OrderedDict ()
+
+        for code,md_set in md_that_day[1].iteritems():
+            #if 0 == i:
+            #    print "%s " % code 
+            indices_for_1_sec = []
+
+            can_buy = 1
+            if i<=1:
+                # 前两行之内肯定凑不满三日涨幅，只能看着
+                can_buy = 0
+            elif md_set[3] or md_set[4] :
+                # 涨停或者停牌的不能买
+                can_buy = 0 
+            
+            if not can_buy:
+                # 不必做其他指标了
+                indices_for_1_sec= [ 0 , 0 ]
+                indices[code] = indices_for_1_sec
+
+                continue
+
+            #前天的行情
+            md_2days_ago_allmd = his_md[i - 2][1]
+
+            if code in md_2days_ago_allmd:
+                # 可以计算三日涨幅
+                md_this_code_2days_ago = md_2days_ago_allmd[code]
+                
+                #前天 的 前日收盘
+                close_3d_ago = md_this_code_2days_ago[1]
+                if close_3d_ago  is not None and close_3d_ago  != 0:
+
+                    delta = md_set[0] - close_3d_ago  
+                    #       本日收盘    #前天 的 前日收盘
+
+                    delta_r = delta / close_3d_ago 
+                    
+                    indices_for_1_sec= [1 ,  delta_r  ]
+                else:
+                    indices_for_1_sec= [0 , 0  ]
+
+            else:
+                # 三日前该code还未纳入指数，不能买
+                indices_for_1_sec= [0, 0 ]
+
+            indices[code] = indices_for_1_sec
+        
+        #if 0 == i:
+        #    print " 以上做指标 \n" 
+
+        md_that_day.append( indices)
+
+    return his_md
+
+
+
 def fh50_until_now(engine, start_year):
     
     now = datetime.now()
@@ -952,8 +1023,26 @@ def fh50_until_now(engine, start_year):
     start_day = "%d-12-10" % start_year
 
     conn = engine.connect()
+
+    # 获取日线数据
+# 返回数组
+#     T_day1,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志]
+
     his_md = db_operator.db_fetch_dailyline(conn, start_day )
 
+    # 在日线数据中，扩充加入指标数据
+# 返回时，数组md_his_data扩充为
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     ...
+# 其中‘指标’ 是  [可买标志，三日累计涨幅]
+    make_indices_by_delta( conn,  his_md )
+    
     #util.bp_as_json( his_md)
     util.bp( his_md)
 

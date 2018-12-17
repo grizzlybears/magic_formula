@@ -798,7 +798,7 @@ def db_save_simu_trade_list(conn, year, month, buy_list, sell_list ):
 #     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
 #     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
 #     ...
-# 其中‘行情’ 是  [收盘价，涨幅， 涨停标志，停牌标志]
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
 
 # 注：   由于成份会变化，无法‘对数化’
 
@@ -856,7 +856,7 @@ order by t_day asc, code asc
         paused = row[5]
             
         
-        md_of_1_sec  = [close,delta_r, close_on_ceil, paused]   # 收盘价，涨幅， 涨停，停牌
+        md_of_1_sec  = [close, pre_close, delta_r, close_on_ceil, paused]   # 收盘价，前日收盘价, 涨幅， 涨停，停牌
         md_of_1_day[code] = md_of_1_sec 
 
     
