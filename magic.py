@@ -922,8 +922,7 @@ def fetch_index_dailyline_until_now(engine, index_code ,start_year):
 
     
     #1. 抓指数自身的日线
-    #t_start  = "%d-01-01" % start_year 
-    t_start  = "%d-12-11" % start_year 
+    t_start  = "%d-01-01" % start_year 
     df_50_his = data_fetcher.get_daily_line( index_code , t_start, now)
     db_operator.save_daily_line_to_db( engine, index_code , df_50_his) 
 
@@ -944,6 +943,19 @@ def backtest_until_now(engine, start_year):
     for y in range( start_year, now.year + 1):
         backtest_1_year( engine, y)
 
+
+def fh50_until_now(engine, start_year):
+    
+    now = datetime.now()
+
+    #从DB抓日线数据
+    start_day = "%d-12-10" % start_year
+
+    conn = engine.connect()
+    his_md = db_operator.db_fetch_dailyline(conn, start_day )
+
+    #util.bp_as_json( his_md)
+    util.bp( his_md)
 
 
 def list_index_until_now(code, start_year):
@@ -1265,6 +1277,46 @@ def handle_fetch50( argv, argv0 ):
         #fetch_target_stock_fundamentals(engine, '000651.XSHE', '2017' )
         
         # real stuff
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+
+    return 0
+
+# 处理 'fh50' 子命令 -- 回测50指数成份骑快马策略 
+def handle_fh50( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005  # 沪深300从 2004年才开始有
+
+        i = len(argv)
+        if ( 1 == i  ):
+            start_year = int(argv[0])
+        else:
+            now = datetime.now()
+            start_year = now.year - 1
+
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        fh50_until_now(engine, start_year)
+
+        global MF_NetValue 
+        print "== 最终净值 %f ==" % MF_NetValue
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()

@@ -57,20 +57,23 @@ def main():
     if ('help' == sub_command ):
         print_usage()
         return 1
-    elif ('fetch' == sub_command ):
+    elif ('fetch' == sub_command ):  # 下载神奇公式所需报表数据
         return magic.handle_fetch ( sys.argv[2:], MY_NAME  )   
-    elif ('nofetch' == sub_command ):
+    elif ('nofetch' == sub_command ):  # 编制神奇公式的各期成份
         return magic.handle_nofetch ( sys.argv[2:], MY_NAME  )
-    elif ('nofetch2' == sub_command ):
+    elif ('nofetch2' == sub_command ): # 编制神奇公式的各期成份
         return magic.handle_nofetch2 ( sys.argv[2:], MY_NAME  )
-    elif ('backtest' == sub_command or 'bt' == sub_command):
+    elif ('backtest' == sub_command or 'bt' == sub_command):  # 回测神奇公式
         return magic.handle_backtest ( sys.argv[2:], MY_NAME  )
-    elif ('list_index' == sub_command ):
+    elif ('list_index' == sub_command ):  # 列出指数的成份
         return magic.handle_list_index ( sys.argv[2:], MY_NAME )   
     elif ('exper' == sub_command ):
         return magic.handle_exper ( sys.argv[2:], MY_NAME )  
-    elif ('fetch50' == sub_command ):
+    elif ('fetch50' == sub_command ):  # 下载50指数的成份股的日线
         return magic.handle_fetch50 ( sys.argv[2:], MY_NAME  )   
+    elif ('fast_horse_50' == sub_command or 'fh50' == sub_command):  # 回测50指数成份骑快马策略
+        return magic.handle_fh50 ( sys.argv[2:], MY_NAME  )
+
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()

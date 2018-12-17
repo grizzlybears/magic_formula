@@ -1,21 +1,27 @@
 ## -*- coding: utf-8 -*-
+
+# py系统包
 from datetime import date
 from datetime import datetime
 
 import sqlite3
-import data_struct 
 import subprocess
+import collections
+import math
 
-import data_struct 
-
+# 著名扩展包
 import  pandas as pd
 from   sqlalchemy import create_engine
 from   sqlalchemy.sql  import select as alch_select
 from   sqlalchemy.sql  import text   as alch_text
 from   sqlalchemy    import  MetaData 
 
+# 其他第三方包
 import to_sql_newrows as nr
 
+# 我们的代码
+import data_struct 
+import util
 
 s_metadata = None
 
@@ -784,5 +790,78 @@ def db_save_simu_trade_list(conn, year, month, buy_list, sell_list ):
         trans.rollback()
         raise e
 
-
     return
+
+
+# 返回数组
+#     T_day1,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     ...
+# 其中‘行情’ 是  [收盘价，涨幅， 涨停标志，停牌标志]
+
+# 注：   由于成份会变化，无法‘对数化’
+
+def db_fetch_dailyline(conn, start_day ):
+    
+    s = '''
+select t_day, code, close, high_limit, pre_close, paused
+from DailyLine
+where t_day >=  '%s' 
+order by t_day asc, code asc 
+            '''  % ( start_day )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    # 交易日, 代码，收盘， 涨停价， 前日收盘， 停牌标志
+    # 0       1     2      3        4          5
+
+
+    row_num = 0
+    his_md = []
+    last_t_day = ''
+
+    md_of_1_day = collections.OrderedDict ()
+    
+    for row in r:
+
+        t_day = row[0]
+        code  = row[1]
+        close = row[2]
+
+        if t_day != last_t_day:
+            # 新的一日行情开始
+            is_new_t_day = True
+            if len(md_of_1_day) > 0:
+                his_md.append( [ last_t_day ,  md_of_1_day ] )
+                md_of_1_day = collections.OrderedDict ()
+
+            last_t_day = t_day
+        else:
+            # 对当前日行情，填入新的代码
+            is_new_t_day = False 
+ 
+       
+        if (row[3] - close ) < 0.01:
+            close_on_ceil = 1 
+        else:
+            close_on_ceil = 0
+
+        pre_close = row[4]
+        if pre_close is not None and pre_close != 0:
+            delta_r = (close - pre_close) / pre_close
+        else:
+            delta_r = 0
+
+        paused = row[5]
+            
+        
+        md_of_1_sec  = [close,delta_r, close_on_ceil, paused]   # 收盘价，涨幅， 涨停，停牌
+        md_of_1_day[code] = md_of_1_sec 
+
+    
+    his_md.append( [ last_t_day ,  md_of_1_day ] )
+ 
+    return his_md
+
+
