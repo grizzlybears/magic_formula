@@ -40,6 +40,8 @@ MF2_CANDI_THRESHOLD  = 80  # 进入TOP多少才是候选
 MF2_COMPO_THRESHOLD  = 2   # 追溯期进入多少次候选才是成份
 MF2_Q=[]
 
+FH_BASE_CODE  = '000016.XSHG'
+
 def list_all_sec():
     r = jq.get_all_securities()
     pd.set_option('display.max_rows', len(r))
@@ -944,6 +946,26 @@ def backtest_until_now(engine, start_year):
     for y in range( start_year, now.year + 1):
         backtest_1_year( engine, y)
 
+# 获得‘可并列’的名次。
+#   indices:  [ (第1名code, 第1名指标数组) , (第2名code, 第2名指标数组), ....  ]
+#
+#   WHICH_INDI: 取指标数组里哪一个指标?
+#
+#  返回 (可并列的名次,  sorted_indices 中的下标 )
+def get_rank(code, sorted_indices, WHICH_INDI):
+    pos = 0  #可‘并列’的名次
+
+    last_indi = 10000
+    for i,walker in enumerate(sorted_indices, start = 1):
+        if walker[1][WHICH_INDI] != last_indi:
+            pos = i
+            last_indi = walker[1][WHICH_INDI]
+
+        if walker[0] == code:
+            return  pos, i-1
+
+    raise Exception("%s不在昨日行情中。" % code );
+
 
 # 返回时，数组his_md扩充为
 #     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
@@ -1013,6 +1035,184 @@ def make_indices_by_delta( conn, his_md ):
 
     return his_md
 
+INITIAL_BALANCE = 10000.0  # 策略期初金额
+TRADE_COST      = 0.0003   # 手续费万三 
+TRADE_TAX       = 0.0001   # 印花税千1单向
+
+# 简单的轮换策略：
+#     根据指标(目前是3日涨幅)从高到底排名。
+#     前M名如果>0，则各给1/M的仓位。
+# Input:  2-D array 'md_his'
+#         日期   各脚行情  各脚指标
+#         ...
+#
+# Output: 2-D array , 交易数
+#         日期  基准收盘价   策略净值 交易次数  换仓详细  
+#         ...
+#
+def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):    
+  
+    if len(his_data) == 0:
+        raise Exception("没有行情历史数据。"  );
+
+    result = []
+    trans_num = 0 
+    
+    sec_num = len( his_data[0][1])
+
+    we_hold =  data_struct.make_init_shares(INITIAL_BALANCE, max_hold)  # 我们的持仓
+
+    for i, row in enumerate(his_data):
+
+        t_day = row[0]
+        #print "T_Day %s,  we hold %s" % (row[0], we_hold)
+
+        md_that_day      = row[1]   #当日行情    
+        indices_that_day = row[2]   #当日指标   
+
+        if i == 0 :
+            # 第一天，没有操作 ，也没有损益
+            r_that_day = []
+            r_that_day.append( t_day )
+            
+            md_of_base = md_that_day[base_code]
+            
+            r_that_day = [t_day, md_of_base[0],  INITIAL_BALANCE, None      ,None ]
+            #                    基准收盘价      策略净值         换仓提示   换仓明细
+ 
+            result.append( r_that_day )
+
+            continue 
+        
+        if "" != start_day and t_day < start_day:
+            # 略过
+            continue
+
+        if "" != end_day and t_day >= end_day:
+            break
+     
+        
+        # 昨日本策略的收盘价
+        if len(result) > 0:
+            y_policy  = result[ len(result) - 1 ][2]    
+        else:
+            y_policy = INITIAL_BALANCE 
+
+        # 这里有一个近似的假设：
+        # 我们可以基于昨日的指标，按照昨日的收盘价，进行操作(记作今日操作)，并把操作的损益反映于今日。
+        
+        #昨日行情
+        y_md      =  his_data[i - 1][1]
+
+        #昨日指标  {code1:指标数组1, code2:指标数组2, ... }
+        y_indices =  his_data[i - 1][2]
+
+# 简单的轮换策略：
+#     根据昨日涨幅从从高到底排名。
+#     前M名如果>0，则各给1/M的仓位。
+        # 指标数组:  [可买标志，三日累计涨幅] 
+        WHICH_INDI = 1 # 我们取指标数组里哪一个指标?
+        sorted_y_indices = sorted ( y_indices.items(), key=lambda sec:sec[1][WHICH_INDI], reverse=True)
+
+        to_hold = []   # 继续持仓的份额编号
+        to_sell = []   # 要卖出的份额编号
+        to_buy  = []   # 要买进的代码
+
+        # 撸一遍我们的持仓，看看有哪些要持有，哪些要卖
+        for one_hold in we_hold:
+            if one_hold.is_blank():
+                continue
+
+            print one_hold
+
+            rank, pos = get_rank(one_hold.code, sorted_y_indices, WHICH_INDI)   #可‘并列’的名次
+            
+            y_indices_of_we_hold = sorted_y_indices[pos][1]  #该持仓代码的昨日指标
+
+            if rank <= max_hold and y_indices_of_we_hold[WHICH_INDI] > 0:
+                to_hold.append( one_hold.seq)
+            else:
+                to_sell.append( one_hold.seq)
+
+        # 撸一遍昨日M强，看看有哪些要买进
+        max_buy = max_hold - len(to_hold) 
+        for code,indi  in sorted_y_indices:
+            if max_buy <=0 :
+                break
+            
+            if indi[WHICH_INDI] <= 0 :
+                break
+            
+            if code in to_hold or not indi[0]:
+            #                         可买标志  
+                continue
+
+            to_buy.append(code)
+            max_buy = max_buy - 1
+
+        op_num = len(to_buy) + len(to_sell)
+        blank_num = max_hold - len(to_hold) - len(to_buy)
+        print util.build_p_hint( t_day
+                , data_struct.get_codes_from_holds(we_hold,  to_hold) 
+                , data_struct.get_codes_from_holds(we_hold,  to_sell)
+                ,  to_buy 
+                )
+        assert blank_num >= 0 
+
+        # 开始调整we_hold  估算当日的净值
+        
+        for one_pos in we_hold:
+            if one_pos.seq in to_sell:
+                # 要卖掉
+                
+                # ‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志]
+                trade_price = y_md[one_pos.code ][0]  #  FIXME: 如果该code停牌，这里需要寻找到其复牌价
+                
+                trade_amount = one_pos.volumn * trade_price
+                trade_loss   = trade_amount *  ( TRADE_COST + TRADE_TAX) 
+
+                one_pos.remaining = one_pos.remaining + trade_volume - trade_loss 
+                one_pos.code = ""
+                one_pos.volumn = 0
+                one_pos.cost_price = 0
+                one_pos.now_price  = 0
+                continue
+            elif one_pos.seq in to_hold:
+                # 更新一下价格
+                one_pos.now_price = md_that_day[one_pos.code ][0] 
+
+        # 买进操作
+        for one_buy in to_buy:
+            pos = data_struct.find_first_blank_pos( we_hold)
+            assert  pos
+
+            trade_price = y_md[one_buy][0]
+
+            trade_volume =  int( one_pos.remaining / ( trade_price * (1 + TRADE_COST )))
+            trade_amount =  trade_volume * trade_price 
+            trade_loss   =  trade_amount *  TRADE_COST 
+            
+            pos.remaining = pos.remaining - trade_amount - trade_loss 
+            pos.code   = one_buy
+            pos.volumn = trade_volume 
+            pos.cost_price = trade_price 
+            pos.new_pirce  = md_that_day[one_buy ][0]
+
+#       日期  基准收盘价   策略净值 交易次数  换仓详细  
+  
+        base_price = md_that_day[base_code][0]
+        t_policy = data_struct.get_total_hold_value( we_hold)
+        op_num_text = "%d" % op_num
+        t_hint = util.build_t_hint(t_day
+                , data_struct.get_codes_from_holds(we_hold, to_sell)
+                , to_buy )
+
+        r_that_day= [ t_day, base_price, t_policy ,op_num_text, t_hint ]
+        result.append( r_that_day )
+
+        trans_num = trans_num + op_num 
+
+    return (result ,  trans_num )
 
 
 def fh50_until_now(engine, start_year):
@@ -1044,8 +1244,11 @@ def fh50_until_now(engine, start_year):
     make_indices_by_delta( conn,  his_md )
     
     #util.bp_as_json( his_md)
-    util.bp( his_md)
+    #util.bp( his_md)
 
+    result, trans_num = sim_rotate( his_md, 3 , FH_BASE_CODE )    
+
+    util.bp( result)
 
 def list_index_until_now(code, start_year):
     now = datetime.now()
@@ -1360,7 +1563,7 @@ def handle_fetch50( argv, argv0 ):
             print "开始年份必须不小于2005"
             return 1
 
-        fetch_index_dailyline_until_now(engine,'000016.XSHG', start_year)
+        fetch_index_dailyline_until_now(engine,FH_BASE_CODE , start_year)
 
 
         #fetch_target_stock_fundamentals(engine, '000651.XSHE', '2017' )

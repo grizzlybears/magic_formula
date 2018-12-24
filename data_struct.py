@@ -105,3 +105,80 @@ class TradeRecord:
 
         return s
 
+
+# 骑快马策略把总资产池分成M‘份’
+# 每份包括一个持仓以及残余的资金
+class ShareOfRotation:
+    #份额编号
+    seq = 0
+
+    #股票代码 
+    code       = "" 
+
+    #持有股数
+    volumn = 0
+
+    #进价
+    cost_price = 0.0
+
+    #现价
+    now_price = 0.0
+
+    #残余资金
+    remaining = 0.0
+
+    # 是否空仓
+    def is_blank(self):
+        return self.volumn == 0
+
+    # 计算总价值
+    def get_value(self):
+        return self.volumn * self.now_price + self.remaining 
+
+    def __repr__(self):
+        s = "[%d]: %s %d股，成本 %f ，现价 %f，可用资金 %f，总价值 %f" % ( 
+                self.seq
+                , self.code  , self.volumn 
+                , self.cost_price , self.now_price 
+                , self.remaining 
+                , self.get_value()
+                )
+
+        return s
+
+# 把初始资金'init_amount'，分成'share_num'个份额
+def make_init_shares( init_amount, share_num):
+    each = init_amount / share_num
+
+    we_hold = []
+
+    for i in range(share_num):
+        one_hold = ShareOfRotation()
+        one_hold.seq = i
+        one_hold.remaining = each
+
+        we_hold.append( one_hold)
+
+    return we_hold
+
+def get_total_hold_value( we_hold):
+    v = 0.0
+    for one_hold in we_hold:
+        v = v + one_hold.get_value()
+
+    return v
+
+def get_codes_from_holds( we_hold, seqs):
+    r = []
+    for one in seqs:
+        r.append( we_hold[one].code )
+
+    return r
+
+def find_first_blank_pos( we_hold):
+    for one_hold in we_hold:
+        if one_hold.is_blank():
+            return one_hold
+
+    return None
+
