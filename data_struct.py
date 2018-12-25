@@ -105,11 +105,21 @@ class TradeRecord:
 
         return s
 
+class SecurityInfo:
+    def __init__(self):
+        self.code = ""
+        self.name = ""
 
-# 骑快马策略把总资产池分成M‘份’
-# 每份包括一个持仓以及残余的资金
-class ShareOfRotation:
-    #份额编号
+    def __repr__(self):
+        return "%s(%s)" % (self.code, self.name)
+
+    def __str__(self):
+        return "%s(%s)" % (self.code, self.name)
+
+
+# 一个持仓
+class PostionEntry:
+    #仓位编号
     seq = 0
 
     #股票代码 
@@ -123,62 +133,88 @@ class ShareOfRotation:
 
     #现价
     now_price = 0.0
-
-    #残余资金
-    remaining = 0.0
-
+ 
     # 是否空仓
     def is_blank(self):
         return self.volumn == 0
 
-    # 计算总价值
+    # 计算市值
     def get_value(self):
-        return self.volumn * self.now_price + self.remaining 
+        return self.volumn * self.now_price  
 
     def __repr__(self):
-        s = "[%d]: %s %d股，成本 %f ，现价 %f，可用资金 %f，总价值 %f" % ( 
+        s = "[%d]: %s %d股，成本 %f ，现价 %f，市值 %f" % ( 
                 self.seq
                 , self.code  , self.volumn 
                 , self.cost_price , self.now_price 
-                , self.remaining 
                 , self.get_value()
                 )
 
         return s
 
+# 整体持仓
+class TotalPosition:
+    pos_entries = []  #所有持仓
+    remaining    = 0.0 #剩余资金
+
+    #总资产
+    def get_value(self): 
+        
+        v = 0.0
+        for one_hold in self.pos_entries:
+            v = v + one_hold.get_value()
+
+        v = v + self.remaining 
+
+        return v
+    
+    def __repr__(self): 
+       
+        s =  ""
+       
+        for one_hold in self.pos_entries:
+            s = s +   str( one_hold) + "\n"
+
+        s = s + "资金:%f\n " % self.remaining 
+        s = s + "    ==== 总资产 %f ====" % self.get_value()
+        
+        return s
+
+    def get_blank_num(self):
+        n = 0
+        for one_hold in self.pos_entries:
+            if one_hold.is_blank():
+                n = n +1
+
+        return n
+
+    def get_codes_from_holds( self, seqs):
+        r = []
+        for one in seqs:
+            r.append( self.pos_entries[one].code )
+
+        return r
+
+    def find_first_blank_pos( self):
+        for one_hold in self.pos_entries:
+            if one_hold.is_blank():
+                return one_hold
+        return None
+
 # 把初始资金'init_amount'，分成'share_num'个份额
 def make_init_shares( init_amount, share_num):
     each = init_amount / share_num
 
-    we_hold = []
+    total_pos = TotalPosition()
+    total_pos.remaining = init_amount 
 
     for i in range(share_num):
-        one_hold = ShareOfRotation()
+        one_hold =  PostionEntry() 
         one_hold.seq = i
-        one_hold.remaining = each
 
-        we_hold.append( one_hold)
+        total_pos.pos_entries.append( one_hold)
 
-    return we_hold
+    return total_pos 
 
-def get_total_hold_value( we_hold):
-    v = 0.0
-    for one_hold in we_hold:
-        v = v + one_hold.get_value()
 
-    return v
-
-def get_codes_from_holds( we_hold, seqs):
-    r = []
-    for one in seqs:
-        r.append( we_hold[one].code )
-
-    return r
-
-def find_first_blank_pos( we_hold):
-    for one_hold in we_hold:
-        if one_hold.is_blank():
-            return one_hold
-
-    return None
 

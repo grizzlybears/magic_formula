@@ -52,6 +52,10 @@ def build_p_hint( t_day,to_hold, to_sell, to_buy):
     return s
 
 def build_t_hint( t_day, to_sell, to_buy):
+
+    if len(to_sell) + len(to_buy) == 0:
+        return None
+
     s = t_day 
     
     if len(to_sell) > 0:

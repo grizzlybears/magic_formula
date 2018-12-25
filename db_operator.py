@@ -811,6 +811,7 @@ where t_day >=  '%s'
 order by t_day asc, code asc 
             '''  % ( start_day )
 
+
     r = conn.execute( alch_text(s) ).fetchall()
 
     # 交易日, 代码，收盘， 涨停价， 前日收盘， 停牌标志
@@ -825,8 +826,8 @@ order by t_day asc, code asc
     
     for row in r:
 
-        t_day = row[0]
-        code  = row[1]
+        t_day = str(row[0])
+        code  = str(row[1])
         close = row[2]
 
         if t_day != last_t_day:

@@ -22,6 +22,8 @@ import data_struct
 import db_operator
 import data_fetcher
 import util
+import plotter
+
 
 s_nofetch = False 
 
@@ -41,6 +43,8 @@ MF2_COMPO_THRESHOLD  = 2   # 追溯期进入多少次候选才是成份
 MF2_Q=[]
 
 FH_BASE_CODE  = '000016.XSHG'
+FH_BASE_NAME  = '上证50'
+
 
 def list_all_sec():
     r = jq.get_all_securities()
@@ -1118,14 +1122,20 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         to_sell = []   # 要卖出的份额编号
         to_buy  = []   # 要买进的代码
 
-        print "%s:" % t_day 
+        #print "%s:" % t_day 
+        #print we_hold 
 
         # 撸一遍我们的持仓，看看有哪些要持有，哪些要卖
-        for one_hold in we_hold:
-            print one_hold
+        for one_hold in we_hold.pos_entries:
             
             if one_hold.is_blank():
                 continue
+
+            if one_hold.code not in md_that_day:
+                # 当日该code已经不在指数成份里
+                to_sell.append( one_hold.seq)
+                continue
+                
 
             rank, pos = get_rank(one_hold.code, sorted_y_indices, WHICH_INDI)   #可‘并列’的名次
             
@@ -1136,7 +1146,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
             else:
                 to_sell.append( one_hold.seq)
 
-        to_hold_codes = data_struct.get_codes_from_holds(we_hold,  to_hold)
+        to_hold_codes = we_hold.get_codes_from_holds(  to_hold)
 
         # 撸一遍昨日M强，看看有哪些要买进
         max_buy = max_hold - len(to_hold) 
@@ -1150,25 +1160,25 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
             if code in to_hold_codes  or not indi[0]:
             #                         可买标志  
                 continue
+            
+            if code not in md_that_day:
+                # 当日该code已经不在指数成份里
+                continue
 
             to_buy.append(code)
             max_buy = max_buy - 1
 
-        to_sell_codes = data_struct.get_codes_from_holds(we_hold,  to_sell)
+        to_sell_codes = we_hold.get_codes_from_holds( to_sell)
         
         op_num = len(to_buy) + len(to_sell)
         blank_num = max_hold - len(to_hold) - len(to_buy)
 
-        print util.build_p_hint( t_day
-                ,  to_hold_codes 
-                ,  to_sell_codes
-                ,  to_buy 
-                )
+        #print util.build_p_hint( t_day,  to_hold_codes ,  to_sell_codes,  to_buy  )
         assert blank_num >= 0 
 
         # 开始调整we_hold  估算当日的净值
         
-        for one_pos in we_hold:
+        for one_pos in we_hold.pos_entries:
             if one_pos.seq in to_sell:
                 # 要卖掉
                 
@@ -1178,40 +1188,43 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
                 trade_amount = one_pos.volumn * trade_price
                 trade_loss   = trade_amount *  ( TRADE_COST + TRADE_TAX) 
 
-                one_pos.remaining = one_pos.remaining + trade_amount - trade_loss 
                 one_pos.code = ""
                 one_pos.volumn = 0
                 one_pos.cost_price = 0
                 one_pos.now_price  = 0
+                
+                we_hold.remaining = we_hold.remaining + trade_amount - trade_loss 
                 continue
             elif one_pos.seq in to_hold:
                 # 更新一下价格
                 one_pos.now_price = md_that_day[one_pos.code ][0] 
 
-        #FIXME: 此处需要平均分配剩余资金
 
         # 买进操作
+        if len(to_buy):
+            each = we_hold.remaining / we_hold.get_blank_num()
+
         for one_buy in to_buy:
-            pos = data_struct.find_first_blank_pos( we_hold)
+            pos = we_hold.find_first_blank_pos()
             assert  pos
 
             trade_price = y_md[one_buy][0]
 
-            trade_volumn =  int( pos.remaining / ( trade_price * (1 + TRADE_COST )))
+            trade_volumn =  int( each  / ( trade_price * (1 + TRADE_COST )))
             trade_amount =  trade_volumn * trade_price 
             trade_loss   =  trade_amount *  TRADE_COST 
             
-            
-            pos.remaining = pos.remaining - trade_amount - trade_loss 
             pos.code   = one_buy
             pos.volumn = trade_volumn  
             pos.cost_price = trade_price 
             pos.now_price  = md_that_day[one_buy ][0]
+                
+            we_hold.remaining = we_hold.remaining - trade_amount - trade_loss 
 
 #       日期  基准收盘价   策略净值 交易次数  换仓详细  
   
         base_price = md_that_day[base_code][0]
-        t_policy = data_struct.get_total_hold_value( we_hold)
+        t_policy = we_hold.get_value()  
         op_num_text = "%d" % op_num
         t_hint = util.build_t_hint(t_day
                 , to_sell_codes  
@@ -1220,11 +1233,9 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         r_that_day= [ t_day, base_price, t_policy ,op_num_text, t_hint ]
         result.append( r_that_day )
 
-        print r_that_day
+        #print r_that_day
         #print we_hold
-
-        print 
-
+        #print 
 
         trans_num = trans_num + op_num 
 
@@ -1236,7 +1247,7 @@ def fh50_until_now(engine, start_year):
     now = datetime.now()
 
     #从DB抓日线数据
-    start_day = "%d-12-10" % start_year
+    start_day = "%d-01-01" % start_year
 
     conn = engine.connect()
 
@@ -1265,6 +1276,18 @@ def fh50_until_now(engine, start_year):
     result, trans_num = sim_rotate( his_md, 3 , FH_BASE_CODE )    
 
     #util.bp( result)
+    #准备画图
+    base_info = data_struct.SecurityInfo()
+    base_info.code = FH_BASE_CODE
+    base_info.name = FH_BASE_NAME
+
+    secs = [ base_info ]
+
+    suffix = ".from_%d" % start_year 
+
+    plotter.generate_htm_chart_for_faster_horse2( secs, result , suffix)
+   
+
 
 def list_index_until_now(code, start_year):
     now = datetime.now()
@@ -1623,8 +1646,6 @@ def handle_fh50( argv, argv0 ):
 
         fh50_until_now(engine, start_year)
 
-        global MF_NetValue 
-        print "== 最终净值 %f ==" % MF_NetValue
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()
