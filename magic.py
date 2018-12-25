@@ -1118,12 +1118,14 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         to_sell = []   # 要卖出的份额编号
         to_buy  = []   # 要买进的代码
 
+        print "%s:" % t_day 
+
         # 撸一遍我们的持仓，看看有哪些要持有，哪些要卖
         for one_hold in we_hold:
+            print one_hold
+            
             if one_hold.is_blank():
                 continue
-
-            print one_hold
 
             rank, pos = get_rank(one_hold.code, sorted_y_indices, WHICH_INDI)   #可‘并列’的名次
             
@@ -1134,6 +1136,8 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
             else:
                 to_sell.append( one_hold.seq)
 
+        to_hold_codes = data_struct.get_codes_from_holds(we_hold,  to_hold)
+
         # 撸一遍昨日M强，看看有哪些要买进
         max_buy = max_hold - len(to_hold) 
         for code,indi  in sorted_y_indices:
@@ -1143,18 +1147,21 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
             if indi[WHICH_INDI] <= 0 :
                 break
             
-            if code in to_hold or not indi[0]:
+            if code in to_hold_codes  or not indi[0]:
             #                         可买标志  
                 continue
 
             to_buy.append(code)
             max_buy = max_buy - 1
 
+        to_sell_codes = data_struct.get_codes_from_holds(we_hold,  to_sell)
+        
         op_num = len(to_buy) + len(to_sell)
         blank_num = max_hold - len(to_hold) - len(to_buy)
+
         print util.build_p_hint( t_day
-                , data_struct.get_codes_from_holds(we_hold,  to_hold) 
-                , data_struct.get_codes_from_holds(we_hold,  to_sell)
+                ,  to_hold_codes 
+                ,  to_sell_codes
                 ,  to_buy 
                 )
         assert blank_num >= 0 
@@ -1171,7 +1178,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
                 trade_amount = one_pos.volumn * trade_price
                 trade_loss   = trade_amount *  ( TRADE_COST + TRADE_TAX) 
 
-                one_pos.remaining = one_pos.remaining + trade_volume - trade_loss 
+                one_pos.remaining = one_pos.remaining + trade_amount - trade_loss 
                 one_pos.code = ""
                 one_pos.volumn = 0
                 one_pos.cost_price = 0
@@ -1181,6 +1188,8 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
                 # 更新一下价格
                 one_pos.now_price = md_that_day[one_pos.code ][0] 
 
+        #FIXME: 此处需要平均分配剩余资金
+
         # 买进操作
         for one_buy in to_buy:
             pos = data_struct.find_first_blank_pos( we_hold)
@@ -1188,15 +1197,16 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
 
             trade_price = y_md[one_buy][0]
 
-            trade_volume =  int( one_pos.remaining / ( trade_price * (1 + TRADE_COST )))
-            trade_amount =  trade_volume * trade_price 
+            trade_volumn =  int( pos.remaining / ( trade_price * (1 + TRADE_COST )))
+            trade_amount =  trade_volumn * trade_price 
             trade_loss   =  trade_amount *  TRADE_COST 
+            
             
             pos.remaining = pos.remaining - trade_amount - trade_loss 
             pos.code   = one_buy
-            pos.volumn = trade_volume 
+            pos.volumn = trade_volumn  
             pos.cost_price = trade_price 
-            pos.new_pirce  = md_that_day[one_buy ][0]
+            pos.now_price  = md_that_day[one_buy ][0]
 
 #       日期  基准收盘价   策略净值 交易次数  换仓详细  
   
@@ -1204,11 +1214,17 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         t_policy = data_struct.get_total_hold_value( we_hold)
         op_num_text = "%d" % op_num
         t_hint = util.build_t_hint(t_day
-                , data_struct.get_codes_from_holds(we_hold, to_sell)
+                , to_sell_codes  
                 , to_buy )
 
         r_that_day= [ t_day, base_price, t_policy ,op_num_text, t_hint ]
         result.append( r_that_day )
+
+        print r_that_day
+        #print we_hold
+
+        print 
+
 
         trans_num = trans_num + op_num 
 
@@ -1248,7 +1264,7 @@ def fh50_until_now(engine, start_year):
 
     result, trans_num = sim_rotate( his_md, 3 , FH_BASE_CODE )    
 
-    util.bp( result)
+    #util.bp( result)
 
 def list_index_until_now(code, start_year):
     now = datetime.now()
