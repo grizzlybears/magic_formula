@@ -1039,6 +1039,19 @@ def make_indices_by_delta( conn, his_md ):
 
     return his_md
 
+
+# ‘指标’数组:  [可买标志, MA(涨幅, $MA_Size1) ]      
+def make_indices_by_MA_delta( conn,  his_md,MA_Size1 = 5):
+    
+    last_mds = {}  # 代码==> 该代码最后几交易日的‘行情’  ** 跳过停牌日
+                   # 其中‘行情’ 是  [ 
+                   #                    [交易日，收盘价，前日收盘，涨幅， 涨停标志], 
+                   #                    [交易日，收盘价，前日收盘，涨幅， 涨停标志], ... 
+                   #                ]
+
+
+
+
 INITIAL_BALANCE = 10000.0  # 策略期初金额
 TRADE_COST      = 0.0003   # 手续费万三 
 TRADE_TAX       = 0.0001   # 印花税千1单向
@@ -1046,23 +1059,29 @@ TRADE_TAX       = 0.0001   # 印花税千1单向
 # 简单的轮换策略：
 #     根据指标(目前是3日涨幅)从高到底排名。
 #     前M名如果>0，则各给1/M的仓位。
+#     卖出标准是指标名次低于sell_threshold 或者 指标<0.
+#     有空仓则依据建仓标准补进仓位。
 # Input:  2-D array 'md_his'
 #         日期   各脚行情  各脚指标
 #         ...
 #
-# Output: 2-D array , 交易数
+# Output: 2-D array , 交易数， 交易成本
 #         日期  基准收盘价   策略净值 交易次数  换仓详细  
 #         ...
 #
 def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):    
-  
+    sell_threshold = max_hold + 2
+
     if len(his_data) == 0:
         raise Exception("没有行情历史数据。"  );
 
     result = []
     trans_num = 0 
+    trans_cost = 0.0
     
     sec_num = len( his_data[0][1])
+
+    hold_num = 0
 
     we_hold =  data_struct.make_init_shares(INITIAL_BALANCE, max_hold)  # 我们的持仓
 
@@ -1141,7 +1160,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
             
             y_indices_of_we_hold = sorted_y_indices[pos][1]  #该持仓代码的昨日指标
 
-            if rank <= max_hold and y_indices_of_we_hold[WHICH_INDI] > 0:
+            if rank <= sell_threshold and y_indices_of_we_hold[WHICH_INDI] > 0:
                 to_hold.append( one_hold.seq)
             else:
                 to_sell.append( one_hold.seq)
@@ -1172,6 +1191,8 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         
         op_num = len(to_buy) + len(to_sell)
         blank_num = max_hold - len(to_hold) - len(to_buy)
+        
+        hold_num = hold_num + len(to_hold)
 
         #print util.build_p_hint( t_day,  to_hold_codes ,  to_sell_codes,  to_buy  )
         assert blank_num >= 0 
@@ -1194,6 +1215,8 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
                 one_pos.now_price  = 0
                 
                 we_hold.remaining = we_hold.remaining + trade_amount - trade_loss 
+                trans_cost  = trans_cost + trade_loss
+
                 continue
             elif one_pos.seq in to_hold:
                 # 更新一下价格
@@ -1220,6 +1243,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
             pos.now_price  = md_that_day[one_buy ][0]
                 
             we_hold.remaining = we_hold.remaining - trade_amount - trade_loss 
+            trans_cost  = trans_cost + trade_loss
 
 #       日期  基准收盘价   策略净值 交易次数  换仓详细  
   
@@ -1239,7 +1263,9 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
 
         trans_num = trans_num + op_num 
 
-    return (result ,  trans_num )
+    print "持有次数 %d" % hold_num
+
+    return (result ,  trans_num , trans_cost )
 
 
 def fh50_until_now(engine, start_year):
@@ -1267,13 +1293,18 @@ def fh50_until_now(engine, start_year):
 #     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
 #     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
 #     ...
-# 其中‘指标’ 是  [可买标志，三日累计涨幅]
+
+    # ‘指标’ 是  [可买标志，三日累计涨幅]
     make_indices_by_delta( conn,  his_md )
     
     #util.bp_as_json( his_md)
     #util.bp( his_md)
 
-    result, trans_num = sim_rotate( his_md, 3 , FH_BASE_CODE )    
+    result, trans_num, trans_cost  = sim_rotate( his_md, 3 , FH_BASE_CODE )    
+# Output: 2-D array , 交易数， 交易成本
+#         日期  基准收盘价   策略净值 交易次数  换仓详细  
+#         ...
+#
 
     #util.bp( result)
     #准备画图
@@ -1286,7 +1317,17 @@ def fh50_until_now(engine, start_year):
     suffix = ".from_%d" % start_year 
 
     plotter.generate_htm_chart_for_faster_horse2( secs, result , suffix)
-   
+ 
+    #show summary
+    t_day_num = len(result)
+    base_delta   = result[ t_day_num - 1][1] / result[ 0][1]
+    policy_delta = result[ t_day_num - 1][2] / result[ 0][2]
+
+    print "%s ~ %s, %d个交易日，交易%d笔，交易成本%f，基准表现%f，策略表现%f" % (
+            result[0][0], result[ t_day_num - 1][0], t_day_num
+            , trans_num,  trans_cost
+            , base_delta, policy_delta 
+            )
 
 
 def list_index_until_now(code, start_year):
@@ -1553,7 +1594,11 @@ def show_wanke_2017_income():
 
 
 def do_some_experiment(engine):
-    show_wanke_2017_income()
+    #show_wanke_2017_income()
+    
+    a = data_fetcher.get_his_until( FH_BASE_CODE   , '2015-08-12', 5)
+    util.bp(a)
+
 
 # 试验场
 def handle_exper( argv, argv0  ): 

@@ -87,6 +87,50 @@ def get_daily_line(sec_code , t_start, t_end ):
 
     return df
 
+# 获得指定股票某天为之，最后N交易日的行情 
+
+# 返回这样的数组 [ 
+#                    [交易日，收盘价], 
+#                    [交易日，收盘价], ... 
+#                ]
+
+def get_his_until(sec_code , t_end, howmany ):
+
+    dt_end  = datetime.strptime( t_end , "%Y-%m-%d").date()
+
+    dt_delta = timedelta( days =  howmany *2 +5 )
+
+    dt_start = dt_end - dt_delta
+
+
+
+    #print "    fetch daily line of %s, %s ~ %s" % ( sec_code, t_start, t_end  )
+    df = jq.get_price(sec_code
+            , start_date= dt_start, end_date=t_end
+            , frequency='daily'
+               #  默认是None(表示[‘open’, ‘close’, ‘high’, ‘low’, ‘volume’, ‘money’]这几个标准字段)
+            , fields=['close', 'pre_close']
+            , skip_paused=True
+            , fq='pre'
+            )
+
+    row_count = len(df.index)
+
+    assert row_count >= howmany
+
+    start_loc = row_count - howmany 
+    
+    mds = []
+
+    tdays = df.index.get_values()
+
+    for loc in range(start_loc, row_count):
+        one_md = [  str(tdays[loc])[:10] , df['close'].iloc[loc ]]
+        mds.append(one_md)
+
+    return mds
+
+
 
 # 确定某个月的第几个交易日是哪一天
 # 返回: 'datetime' or None  
