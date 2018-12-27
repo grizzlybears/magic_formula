@@ -116,7 +116,10 @@ def get_his_until(sec_code , t_end, howmany ):
 
     row_count = len(df.index)
 
-    assert row_count >= howmany
+    if row_count < howmany:
+        print "WARN: %s, ~%s, only got %d dailyline" %(sec_code, t_end, row_count )
+        #应该是在停牌过程中被纳入了指数
+        return []
 
     start_loc = row_count - howmany 
     

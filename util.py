@@ -77,4 +77,20 @@ def build_t_hint( t_day, to_sell, to_buy):
 
     return s
 
+# 这样的数组 [ 
+#                    [交易日，收盘价], 
+#                    [交易日，收盘价], ... 
+#                ]
+# 求 avg(收盘价)
+def avg( his  ):
+
+    if 0 == len(his):
+        return 0
+
+    s = 0
+    for entry in his:
+        s = s  +  entry[1]
+
+    return s / len(his)
+
 

@@ -1039,22 +1039,71 @@ def make_indices_by_delta( conn, his_md ):
 
     return his_md
 
-
-# ‘指标’数组:  [可买标志, MA(涨幅, $MA_Size1) ]      
+# 返回时，数组his_md扩充为
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
+# ‘指标’数组:  [可买标志, 偏离度 =  (收盘 - 均线) / 均线 , MA(收盘, $MA_Size1)  ]      
 def make_indices_by_MA_delta( conn,  his_md,MA_Size1 = 5):
     
-    last_mds = {}  # 代码==> 该代码最后几交易日的‘行情’  ** 跳过停牌日
+    recent_mds = {}  # 代码==> 该代码最后几交易日的‘行情’  ** 跳过停牌日
                    # 其中‘行情’ 是  [ 
-                   #                    [交易日，收盘价，前日收盘，涨幅， 涨停标志], 
-                   #                    [交易日，收盘价，前日收盘，涨幅， 涨停标志], ... 
+                   #                    [交易日，收盘价], 
+                   #                    [交易日，收盘价], ... 
                    #                ]
+    md_prev_day = None
 
+    for md_that_day  in his_md:
+        
+        t_day  = md_that_day[0]
+        md_set = md_that_day[1]
+        
+        indices = collections.OrderedDict ()
 
+        for code,md_set in md_that_day[1].iteritems():
+        
+            if md_prev_day is None or code not in  md_prev_day[1]  or code not in  recent_mds :
+                # 第一天              昨日行情里没有本code            ‘最近交易日’记录里没有本code
 
+                # 需要从外部获取本code最后N日记录
+                recent_memo = data_fetcher.get_his_until( code, t_day, MA_Size1)
+                recent_mds[code] = recent_memo 
+            else:
+                # 停牌的行情不加入 recent_mds
+                if not md_set[4] : 
+                    recent_mds[code].append( [t_day, md_set[0]  ]  )
+
+            if len(recent_mds[code]) > MA_Size1:
+                del recent_mds[code][0]
+
+            MA1 = util.avg( recent_mds[code])
+            # 至此MA有了，准备其他指标
+            
+            if md_set[3] or md_set[4] :
+                # 涨停或者停牌的不能买
+                can_buy = 0
+
+                deviation = 0 # 没必要再算偏离
+            else:
+                can_buy = 1
+                deviation =  (md_set[0] - MA1) / MA1 
+
+            indices[code] = [can_buy, deviation, MA1]
+        
+
+        md_that_day.append( indices)
+        
+        # 准备走向下一天
+        md_prev_day = md_that_day
+
+    return his_md
 
 INITIAL_BALANCE = 10000.0  # 策略期初金额
 TRADE_COST      = 0.0003   # 手续费万三 
 TRADE_TAX       = 0.0001   # 印花税千1单向
+
 
 # 简单的轮换策略：
 #     根据指标(目前是3日涨幅)从高到底排名。
@@ -1172,7 +1221,12 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         for code,indi  in sorted_y_indices:
             if max_buy <=0 :
                 break
+
+            # 比较基准不买
+            if code == FH_BASE_CODE:
+                break
             
+            # 指标为负不买
             if indi[WHICH_INDI] <= 0 :
                 break
             
@@ -1308,6 +1362,74 @@ def fh50_until_now(engine, start_year):
 
     #util.bp( result)
     #准备画图
+    base_info = data_struct.SecurityInfo()
+    base_info.code = FH_BASE_CODE
+    base_info.name = FH_BASE_NAME
+
+    secs = [ base_info ]
+
+    suffix = ".from_%d" % start_year 
+
+    plotter.generate_htm_chart_for_faster_horse2( secs, result , suffix)
+ 
+    #show summary
+    t_day_num = len(result)
+    base_delta   = result[ t_day_num - 1][1] / result[ 0][1]
+    policy_delta = result[ t_day_num - 1][2] / result[ 0][2]
+
+    print "%s ~ %s, %d个交易日，交易%d笔，交易成本%f，基准表现%f，策略表现%f" % (
+            result[0][0], result[ t_day_num - 1][0], t_day_num
+            , trans_num,  trans_cost
+            , base_delta, policy_delta 
+            )
+
+
+def fh50_until_now_above_ma(engine, start_year):
+    
+    now = datetime.now()
+
+    #从DB抓日线数据
+    start_day = "%d-01-01" % start_year
+
+    conn = engine.connect()
+
+    # 获取日线数据
+# 返回数组
+#     T_day1,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志]
+
+    his_md = db_operator.db_fetch_dailyline(conn, start_day )
+
+    # 在日线数据中，扩充加入指标数据
+# 返回时，数组md_his_data扩充为
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     ...
+
+    # ‘指标’ 是  [可买标志，均线偏离度， 均线]
+    make_indices_by_MA_delta( conn,  his_md )
+    
+
+    result, trans_num, trans_cost  = sim_rotate( his_md, 45 , FH_BASE_CODE )    
+# Output: 2-D array , 交易数， 交易成本
+#         日期  基准收盘价   策略净值 交易次数  换仓详细  
+#         ...
+#
+
+    #util.bp( result)
+    #准备画图
+
+    #chart_head = ['日期', '50指数', 'MA10'  ]
+    #chart_data=[]
+    #for entry in his_md:
+    #    row = [ entry[0], entry[1][FH_BASE_CODE][0] , entry[2][FH_BASE_CODE][2] ]
+    #    chart_data.append(row)
+    #plotter.simple_generate_line_chart( chart_head, chart_data)
+
     base_info = data_struct.SecurityInfo()
     base_info.code = FH_BASE_CODE
     base_info.name = FH_BASE_NAME
@@ -1689,7 +1811,12 @@ def handle_fh50( argv, argv0 ):
             print "开始年份必须不小于2005"
             return 1
 
-        fh50_until_now(engine, start_year)
+    
+        #fh50_until_now(engine, start_year)   # N日涨幅最强
+        
+        fh50_until_now_above_ma(engine, start_year)   # N日均线偏离度最强
+
+
 
 
     except  Exception as e:
