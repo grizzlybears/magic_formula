@@ -1088,7 +1088,10 @@ def make_indices_by_MA_delta( conn,  his_md,MA_Size1 = 5):
                 deviation = 0 # 没必要再算偏离
             else:
                 can_buy = 1
-                deviation =  (md_set[0] - MA1) / MA1 
+                if 0 == MA1:
+                    deviation = 0
+                else:
+                    deviation =  (md_set[0] - MA1) / MA1 
 
             indices[code] = [can_buy, deviation, MA1]
         
@@ -1131,6 +1134,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
     sec_num = len( his_data[0][1])
 
     hold_num = 0
+    blank_num = 0
 
     we_hold =  data_struct.make_init_shares(INITIAL_BALANCE, max_hold)  # 我们的持仓
 
@@ -1175,6 +1179,8 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         
         #昨日行情
         y_md      =  his_data[i - 1][1]
+        #print 
+        #util.bp(y_md)
 
         #昨日指标  {code1:指标数组1, code2:指标数组2, ... }
         y_indices =  his_data[i - 1][2]
@@ -1185,6 +1191,9 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
         # 指标数组:  [可买标志，三日累计涨幅] 
         WHICH_INDI = 1 # 我们取指标数组里哪一个指标?
         sorted_y_indices = sorted ( y_indices.items(), key=lambda sec:sec[1][WHICH_INDI], reverse=True)
+        #print 
+        #util.bp(sorted_y_indices)
+
 
         to_hold = []   # 继续持仓的份额编号
         to_sell = []   # 要卖出的份额编号
@@ -1202,6 +1211,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
             if one_hold.code not in md_that_day:
                 # 当日该code已经不在指数成份里
                 to_sell.append( one_hold.seq)
+                #print "卖出 %s，因为不在成份里" % one_hold.code
                 continue
                 
 
@@ -1211,13 +1221,16 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
 
             if rank <= sell_threshold and y_indices_of_we_hold[WHICH_INDI] > 0:
                 to_hold.append( one_hold.seq)
+                #print "持有 %s，排名%d" % (one_hold.code, rank)
             else:
                 to_sell.append( one_hold.seq)
+                #print "卖出 %s，排名%d" % (one_hold.code, rank)
 
         to_hold_codes = we_hold.get_codes_from_holds(  to_hold)
 
         # 撸一遍昨日M强，看看有哪些要买进
-        max_buy = max_hold - len(to_hold) 
+        max_buy = max_hold - len(to_hold)
+        rank = 1
         for code,indi  in sorted_y_indices:
             if max_buy <=0 :
                 break
@@ -1238,18 +1251,21 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
                 # 当日该code已经不在指数成份里
                 continue
 
+            #print "买入 %s，排名%d" % (code, rank)
             to_buy.append(code)
             max_buy = max_buy - 1
+            rank = rank + 1
 
         to_sell_codes = we_hold.get_codes_from_holds( to_sell)
         
         op_num = len(to_buy) + len(to_sell)
-        blank_num = max_hold - len(to_hold) - len(to_buy)
+        blank_howmany = max_hold - len(to_hold) - len(to_buy)
         
         hold_num = hold_num + len(to_hold)
 
         #print util.build_p_hint( t_day,  to_hold_codes ,  to_sell_codes,  to_buy  )
-        assert blank_num >= 0 
+        assert blank_howmany >= 0 
+        blank_num = blank_num + blank_howmany 
 
         # 开始调整we_hold  估算当日的净值
         
@@ -1317,7 +1333,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
 
         trans_num = trans_num + op_num 
 
-    print "持有次数 %d" % hold_num
+    print "平均每天持有仓数 %d, 每天空仓数 %d" % (hold_num / len(his_data) , blank_num/len(his_data))
 
     return (result ,  trans_num , trans_cost )
 
