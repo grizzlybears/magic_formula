@@ -972,9 +972,9 @@ def get_rank(code, sorted_indices, WHICH_INDI):
 
 
 # 返回时，数组his_md扩充为
-#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
-#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
-#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
 #     ...
 # 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
 # 其中‘指标’ 是  [可买标志，三日累计涨幅]
@@ -1040,9 +1040,9 @@ def make_indices_by_delta( conn, his_md ):
     return his_md
 
 # 返回时，数组his_md扩充为
-#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
-#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
-#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
 #     ...
 # 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
 # ‘指标’数组:  [可买标志, 偏离度 =  (收盘 - 均线) / 均线 , MA(收盘, $MA_Size1)  ]      
@@ -1370,7 +1370,7 @@ def fh50_until_now(engine, start_year):
     #util.bp_as_json( his_md)
     #util.bp( his_md)
 
-    result, trans_num, trans_cost  = sim_rotate( his_md, 3 , FH_BASE_CODE )    
+    result, trans_num, trans_cost  = sim_rotate( his_md, 3 , FH_BASE_CODE ,start_day, end_day)    
 # Output: 2-D array , 交易数， 交易成本
 #         日期  基准收盘价   策略净值 交易次数  换仓详细  
 #         ...
@@ -1400,12 +1400,11 @@ def fh50_until_now(engine, start_year):
             )
 
 
-def fh50_until_now_above_ma(engine, start_year):
+def fh50_above_ma(engine, start_day , end_day , ma_size):
     
     now = datetime.now()
 
     #从DB抓日线数据
-    start_day = "%d-01-01" % start_year
 
     conn = engine.connect()
 
@@ -1427,10 +1426,10 @@ def fh50_until_now_above_ma(engine, start_year):
 #     ...
 
     # ‘指标’ 是  [可买标志，均线偏离度， 均线]
-    make_indices_by_MA_delta( conn,  his_md )
+    make_indices_by_MA_delta( conn,  his_md , ma_size)
     
 
-    result, trans_num, trans_cost  = sim_rotate( his_md, 45 , FH_BASE_CODE )    
+    result, trans_num, trans_cost  = sim_rotate( his_md, 45 , FH_BASE_CODE, start_day, end_day )    
 # Output: 2-D array , 交易数， 交易成本
 #         日期  基准收盘价   策略净值 交易次数  换仓详细  
 #         ...
@@ -1452,7 +1451,7 @@ def fh50_until_now_above_ma(engine, start_year):
 
     secs = [ base_info ]
 
-    suffix = ".from_%d" % start_year 
+    suffix = ".from_%s" % start_day
 
     plotter.generate_htm_chart_for_faster_horse2( secs, result , suffix)
  
@@ -1461,8 +1460,9 @@ def fh50_until_now_above_ma(engine, start_year):
     base_delta   = result[ t_day_num - 1][1] / result[ 0][1]
     policy_delta = result[ t_day_num - 1][2] / result[ 0][2]
 
-    print "%s ~ %s, %d个交易日，交易%d笔，交易成本%f，基准表现%f，策略表现%f" % (
-            result[0][0], result[ t_day_num - 1][0], t_day_num
+    print "MA%d上方骑快马, %s ~ %s, %d个交易日，交易%d笔，交易成本%f，基准表现%f，策略表现%f" % (
+             ma_size
+            , result[0][0], result[ t_day_num - 1][0], t_day_num
             , trans_num,  trans_cost
             , base_delta, policy_delta 
             )
@@ -1814,23 +1814,27 @@ def handle_fh50( argv, argv0 ):
         # get db engine
         engine = db_operator.get_db_engine()
         
-        start_year = 2005  # 沪深300从 2004年才开始有
+        
+
+        end_day = ''
+        ma_size = 5
 
         i = len(argv)
-        if ( 1 == i  ):
-            start_year = int(argv[0])
+        if ( 0 == i  ):
+            start_day = '2017-01-01'  
         else:
-            now = datetime.now()
-            start_year = now.year - 1
+            start_day  = argv[0]
 
-        if start_year < 2005:
-            print "开始年份必须不小于2005"
-            return 1
+            if ( i >= 2 ):
+                end_day  = argv[1]
+
+                if (i>=3):
+                    ma_size = int(argv[2])
 
     
         #fh50_until_now(engine, start_year)   # N日涨幅最强
         
-        fh50_until_now_above_ma(engine, start_year)   # N日均线偏离度最强
+        fh50_above_ma(engine, start_day, end_day, ma_size)   # N日均线偏离度最强
 
 
 
