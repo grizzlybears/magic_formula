@@ -73,6 +73,9 @@ def main():
         return magic.handle_fetch50 ( sys.argv[2:], MY_NAME  )   
     elif ('fast_horse_50' == sub_command or 'fh50' == sub_command):  # 回测50指数成份骑快马策略
         return magic.handle_fh50 ( sys.argv[2:], MY_NAME  )
+    elif ('slow_horse_50' == sub_command or 'sh50' == sub_command):  # 回测50指数成份骑慢马策略
+        return magic.handle_fh50 ( sys.argv[2:], MY_NAME  )
+
 
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )

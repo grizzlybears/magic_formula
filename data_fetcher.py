@@ -128,7 +128,7 @@ def get_his_until(sec_code , t_end, howmany ):
     tdays = df.index.get_values()
 
     for loc in range(start_loc, row_count):
-        one_md = [  str(tdays[loc])[:10] , df['close'].iloc[loc ]]
+        one_md = [  str(tdays[loc])[:10] , df['close'].iloc[loc ], df['pre_close'].iloc[loc ]]
         mds.append(one_md)
 
     return mds

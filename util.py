@@ -93,4 +93,18 @@ def avg( his  ):
 
     return s / len(his)
 
+# 这样的数组 [ 
+#                    [交易日，收盘价, 前日收盘价], 
+#                    [交易日，收盘价, 前日收盘价], ... 
+#            ]
+# 求总涨幅
+def sum_delta( his  ):
+
+    if 0 == len(his):
+        return 0
+
+    s = his[len(his) - 1][1] - his[0][2]
+
+    return s 
+
 
