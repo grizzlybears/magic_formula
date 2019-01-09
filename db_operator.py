@@ -234,6 +234,25 @@ CREATE TABLE if not exists "DailyLine" (
     '''
     conn.execute( sql) 
 
+def create_sub_line_table(conn):
+    sql= '''
+CREATE TABLE if not exists "SubLine" (
+    code TEXT, 
+    t_day TEXT, 
+    interval int,
+    seqno    int,
+    open FLOAT, 
+    close FLOAT, 
+    high FLOAT, 
+    low FLOAT, 
+    volume FLOAT, 
+    money FLOAT
+    , PRIMARY KEY( code, t_day, interval,seqno)
+);
+    '''
+    conn.execute( sql) 
+
+
 #记录某天某股票是否停牌
 def create_pause_table(conn):
     sql= '''
@@ -331,6 +350,8 @@ def get_db_conn():
     create_vMagicBalanace(conn)
 
     create_simu_trade(conn)
+
+    create_sub_line_table(conn)
 
     conn.commit()
 
@@ -473,6 +494,47 @@ def db_save_dailyline(engine, code, t_day, open_,close_,high, low,volume,money, 
     except Exception as e:
         trans.rollback()
         raise e
+
+
+def db_save_sub_line(engine, code, t_day, interval, seqno, open_,close_,high, low,volume,money  ):
+
+    conn = engine.connect()
+
+    global s_metadata 
+    #print s_metadata.tables
+
+    T_Subline = s_metadata.tables['SubLine']
+ 
+    trans = conn.begin()
+    try:
+        s = alch_text(
+            '''
+            delete from SubLine 
+            where t_day  = :t and code = :c and interval = :iv and seqno = :se
+            '''
+            )
+
+        conn.execute( s, t  = t_day, c = code, iv = interval, se = seqno )
+ 
+        ins = T_Subline.insert().values(
+            code = code
+            , t_day = t_day
+            , interval = interval
+            , seqno = seqno
+            , open = open_ 
+            , close = close_ 
+            , high = high
+            , low = low
+            , volume = volume
+            , money = money
+            )
+        r = conn.execute( ins )
+     
+        trans.commit()
+    except Exception as e:
+        trans.rollback()
+        raise e
+
 
 def query_balancesheet(engine, code, statDate ):
 
