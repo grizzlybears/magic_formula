@@ -31,6 +31,7 @@ FH_BASE_NAME  = '上证50'
 
 POOL_CODES = ['601398.XSHG', '601939.XSHG', '601988.XSHG', '601288.XSHG', '601328.XSHG' ] 
 POOL_BASE  = '399951.XSHE'   # 比较基准
+POOL_BASE_NAME  = '300银行'   # 比较基准
 
 #  300银行 vs   601398工行, 601939建行, 601988中行, 601288农行, 601328交行
 
@@ -450,7 +451,7 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
                 break
 
             # 比较基准不买
-            if code == FH_BASE_CODE:
+            if code == base_code:
                 break
             
             # 指标为负不买
@@ -692,7 +693,7 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
                 break
             
             # 比较基准不买
-            if code == FH_BASE_CODE:
+            if code == base_code:
                 continue
             
             if  not indi[0]:
@@ -882,7 +883,7 @@ def fh50_until_now(engine, start_year):
             )
 
 
-def sh50_buy_worst(engine, start_day, end_day, max_hold, howlong):   # N日涨幅最遭
+def sh50_buy_worst(engine, start_day, end_day, max_hold, howlong, base_code , base_name):   # N日涨幅最遭
 
     #从DB抓日线数据
     conn = engine.connect()
@@ -907,7 +908,7 @@ def sh50_buy_worst(engine, start_day, end_day, max_hold, howlong):   # N日涨�
     # ‘指标’ 是  [可买标志，N日累计涨幅]
     make_indices_by_delta2( conn,  his_md , howlong)
  
-    result, trans_num, trans_cost  = sim_rotate_buy_worst( his_md, max_hold , howlong, FH_BASE_CODE, start_day, end_day )    
+    result, trans_num, trans_cost  = sim_rotate_buy_worst( his_md, max_hold , howlong, base_code, start_day, end_day )    
 # Output: 2-D array , 交易数， 交易成本
 #         日期  基准收盘价   策略净值 交易次数  换仓详细  
 #         ...
@@ -924,8 +925,8 @@ def sh50_buy_worst(engine, start_day, end_day, max_hold, howlong):   # N日涨�
     #plotter.simple_generate_line_chart( chart_head, chart_data)
 
     base_info = data_struct.SecurityInfo()
-    base_info.code = FH_BASE_CODE
-    base_info.name = FH_BASE_NAME
+    base_info.code = base_code 
+    base_info.name = base_name
 
     secs = [ base_info ]
 
@@ -1131,7 +1132,7 @@ def handle_sh50( argv, argv0 ):
                 if (i>=3):
                     ma_size = int(argv[2])
 
-        sh50_buy_worst(engine, start_day, end_day,max_hold, ma_size)   # N日涨幅最遭
+        sh50_buy_worst(engine, start_day, end_day,max_hold, ma_size, FH_BASE_CODE, FH_BASE_NAME )   # N日涨幅最遭
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()
@@ -1172,6 +1173,45 @@ def handle_fetch_in_pool( argv, argv0 ):
         #pool = ['601288.XSHG', '601328.XSHG','399951.XSHE' ]
         
         fetch_dailyline_in_pool_until_now(engine,pool , start_year)
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+    return 0
+
+# 处理 'shp' 子命令 -- 在指定股票池中回测骑慢马策略   
+def handle_sh_in_pool( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+
+        end_day = ''
+        max_hold = 1
+        ma_size  = 20
+
+        i = len(argv)
+        if ( 0 == i  ):
+            start_day = '2017-01-01'  
+        else:
+            start_day  = argv[0]
+
+            if ( i >= 2 ):
+                end_day  = argv[1]
+
+                if (i>=3):
+                    ma_size = int(argv[2])
+
+        sh50_buy_worst(engine, start_day, end_day,max_hold, ma_size, POOL_BASE, POOL_BASE_NAME)   # N日涨幅最遭
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()
