@@ -29,14 +29,20 @@ import make_indices
 FH_BASE_CODE  = '000016.XSHG'
 FH_BASE_NAME  = '上证50'
 
+POOL_CODES = ['601398.XSHG', '601939.XSHG', '601988.XSHG', '601288.XSHG', '601328.XSHG' ] 
+POOL_BASE  = '399951.XSHE'   # 比较基准
 
-def fetch_index_compo_dailyline_1_day(engine, index_code,t_day):
-    # 取该日指数成份
-    compo_list = jq.get_index_stocks( index_code, date = t_day)
+#  300银行 vs   601398工行, 601939建行, 601988中行, 601288农行, 601328交行
+
+
+def fetch_dailyline_in_pool_until_now(engine, pool, start_year):
+    
+    today  = datetime.now().date()
+    t_start  = "%d-01-01" % start_year 
 
     # 抓行情
-    pn = jq.get_price(compo_list 
-            , start_date= t_day, end_date=t_day
+    pn = jq.get_price(pool
+            , start_date= t_start, end_date= today 
             , frequency='daily'
             , fields=['open', 'close', 'high', 'low', 'volume', 'money', 'high_limit', 'low_limit', 'pre_close', 'paused']
             , skip_paused=False
@@ -56,25 +62,39 @@ def fetch_index_compo_dailyline_1_day(engine, index_code,t_day):
     df_pre_close  = pn['pre_close']
     df_paused     = pn['paused']
 
-    for one_compo in compo_list:
-        print "%s, %s : open=%f close=%f paused=%d" % (t_day, one_compo, df_open[one_compo].iloc[0],df_close[one_compo].iloc[0] ,  df_paused[one_compo].iloc[0]   )
+    row_num = len(df_open.index)
+    print "从%d开始至今，有%d交易日" % ( start_year, row_num)
 
-        db_operator.db_save_dailyline(engine
+    for one_compo in pool:
+
+        for i in range(row_num):
+            t_day = str(df_open.index[i])[:10]
+            
+            if math.isnan( df_open[one_compo].iloc[i] ):
+                print "略过%s %s" %( t_day, one_compo)
+                continue
+            #print t_day , one_compo , df_open[one_compo].iloc[i] , df_close[one_compo].iloc[i], df_paused[one_compo].iloc[i]
+            print "%s, %s : open=%f close=%f paused=%d" % (t_day
+                    , one_compo
+                    , df_open[one_compo].iloc[i]
+                    , df_close[one_compo].iloc[i] 
+                    , df_paused[one_compo].iloc[i]   )
+
+            db_operator.db_save_dailyline(engine
                 , one_compo 
                 , t_day
-                , df_open[one_compo].iloc[0]
-                , df_close[one_compo].iloc[0]
-                , df_high[one_compo].iloc[0]
-                , df_low[one_compo].iloc[0]
-                , df_volume[one_compo].iloc[0]
-                , df_money[one_compo].iloc[0]
-                , df_high_limit[one_compo].iloc[0]
-                , df_low_limit[one_compo].iloc[0]
-                , df_pre_close[one_compo].iloc[0]
-                , df_paused[one_compo].iloc[0]
+                , df_open[one_compo].iloc[i]
+                , df_close[one_compo].iloc[i]
+                , df_high[one_compo].iloc[i]
+                , df_low[one_compo].iloc[i]
+                , df_volume[one_compo].iloc[i]
+                , df_money[one_compo].iloc[i]
+                , df_high_limit[one_compo].iloc[i]
+                , df_low_limit[one_compo].iloc[i]
+                , df_pre_close[one_compo].iloc[i]
+                , df_paused[one_compo].iloc[i]
                 )
 
-    print
 
 def fetch_index_dailyline_until_now(engine, index_code ,start_year):
     now = datetime.now()
@@ -1112,6 +1132,46 @@ def handle_sh50( argv, argv0 ):
                     ma_size = int(argv[2])
 
         sh50_buy_worst(engine, start_day, end_day,max_hold, ma_size)   # N日涨幅最遭
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+    return 0
+
+# 处理 'fetchp' 子命令，下载池中股票的日线
+def handle_fetch_in_pool( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005  # 上证50从 2004年才开始有
+
+        i = len(argv)
+        if ( 1 == i  ):
+            start_year = int(argv[0])
+        else:
+            now = datetime.now()
+            start_year = now.year - 1
+
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        pool = POOL_CODES
+        pool.append( POOL_BASE )
+        #pool = ['601288.XSHG', '601328.XSHG','399951.XSHE' ]
+        
+        fetch_dailyline_in_pool_until_now(engine,pool , start_year)
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()
