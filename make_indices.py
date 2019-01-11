@@ -115,7 +115,7 @@ def extend_indices_add_delta( conn,  his_md, howlong):
             if len(recent_mds[code]) > howlong:
                 del recent_mds[code][0]
 
-            delta  = util.sum_delta( recent_mds[code])
+            delta  = util.sum_delta_r( recent_mds[code])
             # 至此累计涨幅有了
 
             indi_of_the_code.append(delta) 

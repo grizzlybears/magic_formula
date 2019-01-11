@@ -26,6 +26,8 @@ import util
 import plotter
 import make_indices 
 
+VERBOSE = 1
+
 FH_BASE_CODE  = '000016.XSHG'
 FH_BASE_NAME  = '上证50'
 
@@ -214,6 +216,7 @@ def  make_indices_by_delta2( conn,  his_md , howlong):
     make_indices.extend_indices_add_buyable( conn,  his_md)
     make_indices.extend_indices_add_delta( conn,  his_md, howlong)
 
+    #util.bp( his_md)
  
 # 返回时，数组his_md扩充为
 #     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
@@ -623,7 +626,6 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
         if "" != end_day and t_day >= end_day:
             break
  
-        # print "\n============\nT_Day %s,  we hold\n %s" % (row[0], we_hold)
 
         md_that_day      = row[1]   #当日行情    
         indices_that_day = row[2]   #当日指标   
@@ -655,7 +657,9 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
             continue 
  
         # 要操作了
-
+        if VERBOSE:
+            print "============\nT_Day %s,  we hold\n %s" % (row[0], we_hold)
+        
         # 这里有一个近似的假设：
         # 我们可以基于昨日的指标，按照昨日的收盘价，进行操作(记作今日操作)，并把操作的损益反映于今日。
         
@@ -704,7 +708,10 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
                 # 当日该code已经不在指数成份里
                 continue
 
-            #print "应当买入 %s，排名%d" % (code, rank)
+            if VERBOSE:
+                print "应当买入 %s，排名%d" % (code, rank)
+                print sorted_y_indices 
+
             to_buy.append(code)
             max_buy = max_buy - 1
             rank = rank + 1
@@ -722,14 +729,16 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
             if one_hold.code not in md_that_day:
                 # 当日该code已经不在指数成份里
                 to_sell.append( one_hold.seq)
-                #print "%s,卖出 %s，因为不在成份里" % (t_day, one_hold.code)
+                if VERBOSE:
+                    print "%s,卖出 %s，因为不在成份里" % (t_day, one_hold.code)
                 continue
 
             if one_hold.code in to_buy:
                 # 太糟了
                 to_hold.append( one_hold.seq)
                 to_buy.remove( one_hold.code)
-                #print "%s, 继续持有 %s" % (t_day, one_hold.code)
+                if VERBOSE:
+                    print "%s, 继续持有 %s" % (t_day, one_hold.code)
             else:
                 to_sell.append( one_hold.seq)
 
@@ -755,6 +764,8 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
                     print "WARN: %s , %s 的昨收盘是NaN，只能以最后的持仓价格卖出" % (t_day, one_pos.code)
                     trade_price = one_pos.now_price 
 
+                if VERBOSE:
+                    print "卖出%s, %d股，毛盈亏%f" % (one_pos.code, one_pos.volumn, one_pos.volumn*( one_pos.now_price - one_pos.cost_price ) )
                 trade_amount = one_pos.volumn * trade_price
                 trade_loss   = trade_amount *  ( TRADE_COST + TRADE_TAX) 
 
@@ -808,9 +819,10 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
         r_that_day= [ t_day, base_price, t_policy ,op_num_text, t_hint ]
         result.append( r_that_day )
 
+        if VERBOSE:
         #print r_that_day
         #print we_hold
-        #print 
+            print "\n\n" 
         trans_num = trans_num + op_num 
         
         real_tday_num  = real_tday_num + 1
