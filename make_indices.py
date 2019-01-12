@@ -107,6 +107,7 @@ def extend_indices_add_delta( conn,  his_md, howlong):
                 # 需要从外部获取本code最后N日记录
                 recent_memo = data_fetcher.get_his_until( code, t_day, howlong)
                 recent_mds[code] = recent_memo 
+                #print recent_mds['601398.XSHG']
             else:
                 # 停牌的行情不加入 recent_mds
                 if not  md_of_the_code[4] : 

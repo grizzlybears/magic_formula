@@ -26,7 +26,7 @@ import util
 import plotter
 import make_indices 
 
-VERBOSE = 1
+VERBOSE = 0
 
 FH_BASE_CODE  = '000016.XSHG'
 FH_BASE_NAME  = '上证50'
@@ -958,6 +958,69 @@ def sh50_buy_worst(engine, start_day, end_day, max_hold, howlong, base_code , ba
             , base_delta, policy_delta 
             )
 
+def sh50_buy_worst_ma(engine, start_day, end_day, max_hold, howlong, base_code , base_name):   # N日相对均线最遭
+
+    #从DB抓日线数据
+    conn = engine.connect()
+
+    # 获取日线数据
+# 返回数组
+#     T_day1,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志]
+    his_md = db_operator.db_fetch_dailyline(conn, start_day )
+
+    # 在日线数据中，扩充加入指标数据
+# 返回时，数组md_his_data扩充为
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的行情, 证券2:证券2的行情, ... }
+#     ...
+
+    # ‘指标’ 是  [可买标志，均线偏离度， 均线]
+    make_indices_by_MA_delta( conn,  his_md , howlong)
+ 
+    result, trans_num, trans_cost  = sim_rotate_buy_worst( his_md, max_hold , howlong, base_code, start_day, end_day )    
+# Output: 2-D array , 交易数， 交易成本
+#         日期  基准收盘价   策略净值 交易次数  换仓详细  
+#         ...
+#
+
+    #util.bp( result)
+    #准备画图
+
+    #chart_head = ['日期', '50指数', 'MA10'  ]
+    #chart_data=[]
+    #for entry in his_md:
+    #    row = [ entry[0], entry[1][FH_BASE_CODE][0] , entry[2][FH_BASE_CODE][2] ]
+    #    chart_data.append(row)
+    #plotter.simple_generate_line_chart( chart_head, chart_data)
+
+    base_info = data_struct.SecurityInfo()
+    base_info.code = base_code 
+    base_info.name = base_name
+
+    secs = [ base_info ]
+
+    suffix = ".from_%s" % start_day
+
+    plotter.generate_htm_chart_for_faster_horse2( secs, result , suffix)
+ 
+    #show summary
+    t_day_num = len(result)
+    base_delta   = result[ t_day_num - 1][1] / result[ 0][1]
+    policy_delta = result[ t_day_num - 1][2] / result[ 0][2]
+
+    print "%d日最糟, %s ~ %s, %d个交易日，交易%d笔，交易成本%f，基准表现%f，策略表现%f" % (
+             howlong
+            , result[0][0], result[ t_day_num - 1][0], t_day_num
+            , trans_num,  trans_cost
+            , base_delta, policy_delta 
+            )
+
+
 
     
     
@@ -1099,9 +1162,9 @@ def handle_fh50( argv, argv0 ):
                     ma_size = int(argv[2])
 
     
-        #fh50_until_now(engine, start_year)   # N日涨幅最强
+        fh50_until_now(engine, start_year)   # N日涨幅最强
         
-        fh50_above_ma(engine, start_day, end_day, ma_size)   # N日均线偏离度最强
+        #fh50_above_ma(engine, start_day, end_day, ma_size)   # N日均线偏离度最强
 
 
 
@@ -1224,6 +1287,45 @@ def handle_sh_in_pool( argv, argv0 ):
                     ma_size = int(argv[2])
 
         sh50_buy_worst(engine, start_day, end_day,max_hold, ma_size, POOL_BASE, POOL_BASE_NAME)   # N日涨幅最遭
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+    return 0
+
+# 处理 'shp2' 子命令 -- 在指定股票池中回测相对均线最糟策略  shp [startday] [endday] [ma size]    
+def handle_shp2_in_pool( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+
+        end_day = ''
+        max_hold = 1
+        ma_size  = 20
+
+        i = len(argv)
+        if ( 0 == i  ):
+            start_day = '2017-01-01'  
+        else:
+            start_day  = argv[0]
+
+            if ( i >= 2 ):
+                end_day  = argv[1]
+
+                if (i>=3):
+                    ma_size = int(argv[2])
+
+        sh50_buy_worst_ma(engine, start_day, end_day,max_hold, ma_size, POOL_BASE, POOL_BASE_NAME)   # N日涨幅最遭
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()

@@ -83,6 +83,8 @@ def main():
         return rotate.handle_fetch_in_pool ( sys.argv[2:], MY_NAME  )   
     elif ('slow_horse_pool' == sub_command or 'shp' == sub_command):  # 在指定股票池中回测骑慢马策略  shp [startday] [endday] [window size]
         return rotate.handle_sh_in_pool ( sys.argv[2:], MY_NAME  )
+    elif ( 'shp2' == sub_command):  # 在指定股票池中回测相对均线最糟策略  shp [startday] [endday] [ma size]
+        return rotate.handle_shp2_in_pool ( sys.argv[2:], MY_NAME  )
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()
