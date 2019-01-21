@@ -535,6 +535,36 @@ def db_save_sub_line(engine, code, t_day, interval, seqno, open_,close_,high, lo
         trans.rollback()
         raise e
 
+def db_save_sub_line_fast(engine, code, t_day, interval, seqno, open_,close_,high, low,volume,money  ):
+
+    conn = engine.connect()
+
+    global s_metadata 
+    #print s_metadata.tables
+
+    T_Subline = s_metadata.tables['SubLine']
+ 
+    trans = conn.begin()
+    try:
+        
+        ins = T_Subline.insert().values(
+            code = code
+            , t_day = t_day
+            , interval = interval
+            , seqno = seqno
+            , open = open_ 
+            , close = close_ 
+            , high = high
+            , low = low
+            , volume = volume
+            , money = money
+            )
+        r = conn.execute( ins )
+     
+        trans.commit()
+    except Exception as e:
+        trans.rollback()
+        print e
 
 def query_balancesheet(engine, code, statDate ):
 

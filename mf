@@ -85,6 +85,10 @@ def main():
         return rotate.handle_sh_in_pool ( sys.argv[2:], MY_NAME  )
     elif ( 'shp2' == sub_command):  # 在指定股票池中回测相对均线最糟策略  shp [startday] [endday] [ma size]
         return rotate.handle_shp2_in_pool ( sys.argv[2:], MY_NAME  )
+ 
+    elif ('hh_all' == sub_command or 'hha' == sub_command):  # 下载所有代码的半小时线  hha [startday def '2008-01-01'] [endday(不包括) def today ]
+        return kline_downloader.handle_hha( sys.argv[2:], MY_NAME  )
+    
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()

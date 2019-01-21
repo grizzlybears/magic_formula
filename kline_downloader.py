@@ -100,3 +100,94 @@ def handle_hh( argv, argv0 ):
 
     return 0
 
+def get_spec_halfhour_line(engine, start_d, end_d, code , which_seqno):
+
+    
+    df = jq.get_price( code 
+            , start_date= start_d, end_date= end_d
+            , frequency='30m'
+            , fields=['open', 'close', 'high', 'low', 'volume', 'money']
+            , skip_paused=True
+            , fq='pre'
+            )
+
+    #print df
+
+    #row_num = len(df.index)
+    last_t_day = ''
+    seqno = 0
+    for index, row in df.iterrows():
+        t_day =  str(index)[:10]
+
+        if ( t_day == last_t_day ):
+            seqno = seqno +1
+        else:
+            last_t_day = t_day
+            seqno = 0
+
+        if seqno != which_seqno:
+            continue
+        
+        #print("%s %s  open=%f close=%f " %( index, code, row['open'], row['close']))
+        db_operator.db_save_sub_line_fast(engine
+                , code
+                , t_day
+                , 30 #interval
+                , seqno
+                , row['open']
+                , row['close']
+                , row['high']
+                , row['low']
+                , row['volume']
+                , row['money']
+                )
+
+
+def get_halfhour_line_all(engine, start_d, end_d ):
+    
+    print " %s ~ %s(not included)" % ( start_d, end_d)
+
+    all_stocks = list(jq.get_all_securities(['stock']).index)
+    
+    for one_code in all_stocks:
+        print "%s, fetching %s" % (datetime.now(), one_code )
+        get_spec_halfhour_line(engine, start_d, end_d, one_code, 0)
+
+
+# 处理 'hha' 子命令 -- 下载所有代码的半小时线  
+def handle_hha( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+
+
+        i = len(argv)
+        if ( 0 == i  ):
+            start_day = '2008-01-01'  
+        else:
+            start_day  = argv[0]
+
+            if ( i >= 2 ):
+                end_day  = argv[1]
+            else:
+                today  = datetime.now().date()
+                end_day = today 
+                
+        
+        get_halfhour_line_all(engine, start_day, end_day )   
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+    return 0
+
