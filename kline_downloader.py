@@ -125,7 +125,7 @@ def get_spec_halfhour_line(engine, start_d, end_d, code , which_seqno):
             last_t_day = t_day
             seqno = 0
 
-        if seqno != which_seqno:
+        if seqno not in  which_seqno:
             continue
         
         #print("%s %s  open=%f close=%f " %( index, code, row['open'], row['close']))
@@ -145,13 +145,12 @@ def get_spec_halfhour_line(engine, start_d, end_d, code , which_seqno):
 
 def get_halfhour_line_all(engine, start_d, end_d ):
     
-    print " %s ~ %s(not included)" % ( start_d, end_d)
 
     all_stocks = list(jq.get_all_securities(['stock']).index)
     
     for one_code in all_stocks:
-        print "%s, fetching %s" % (datetime.now(), one_code )
-        get_spec_halfhour_line(engine, start_d, end_d, one_code, 0)
+        print "%s, fetching %s (%s ~ %s)" % (datetime.now(), one_code, start_d, end_d  )
+        get_spec_halfhour_line(engine, start_d, end_d, one_code, [0,7]) #要第一个‘半小时’，和最后一个‘半小时’
 
 
 # 处理 'hha' 子命令 -- 下载所有代码的半小时线  
