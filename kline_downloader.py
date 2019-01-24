@@ -143,6 +143,21 @@ def get_spec_halfhour_line(engine, start_d, end_d, code , which_seqno):
                 )
 
 
+def check_api_quote():
+    quote =  jq.get_query_count()
+    spare = quote["spare"]
+
+    if spare < 500:
+        #流量不足，为了避免API抛错，我们等到明天
+        today  = datetime.now()
+        this_day = today.day
+        while datetime.now().day == this_day:
+            time.sleep(30)  # 30  seconds
+            print "."
+
+
+
+
 def get_halfhour_line_all(engine, start_d, end_d ):
     
 
@@ -151,6 +166,8 @@ def get_halfhour_line_all(engine, start_d, end_d ):
     for one_code in all_stocks:
         print "%s, fetching %s (%s ~ %s)" % (datetime.now(), one_code, start_d, end_d  )
         get_spec_halfhour_line(engine, start_d, end_d, one_code, [0,7]) #要第一个‘半小时’，和最后一个‘半小时’
+        check_api_quote()
+
 
 
 # 处理 'hha' 子命令 -- 下载所有代码的半小时线  

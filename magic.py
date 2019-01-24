@@ -1151,6 +1151,7 @@ def do_some_experiment(engine):
     
     #a = data_fetcher.get_his_until( FH_BASE_CODE   , '2015-08-12', 5)
     #util.bp(a)
+    print jq.get_query_count()
     pass
     
     
