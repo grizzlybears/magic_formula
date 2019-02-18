@@ -10,6 +10,47 @@ import db_operator
 import data_struct 
 import jq_acc
 
+def is_paused(engine, code, t_day ):
+
+    q = db_operator.query_paused( engine, code, t_day)
+
+    if q is not None:
+        return q == 1
+
+    #print '%s, %s DB里没查到是否停牌' % (code,t_day)
+
+    i = check_if_paused(code, t_day)
+    
+    db_operator.record_paused(engine , code , t_day, i )
+    
+
+    return i != 0
+
+
+
+# 获得指定年份沪市所有交易日
+def get_trade_days( yyyy):
+
+    start_d  = str(yyyy)+'-01-01'
+    end_d    = str(yyyy+1) + '-01-01'
+
+    q= jq.query(
+            jq.finance.STK_EXCHANGE_TRADE_INFO
+            ).filter(
+                    jq.finance.STK_EXCHANGE_TRADE_INFO.exchange_code==322001  #代表沪市
+                    , jq.finance.STK_EXCHANGE_TRADE_INFO.date>= start_d 
+                    , jq.finance.STK_EXCHANGE_TRADE_INFO.date< end_d
+                    ).limit(300)
+    df=jq.finance.run_query(q)
+    
+    alltday = df['date'].tolist()
+    #alltday = df['date'].values
+    #print alltday
+    return alltday
+
+
+
+
 # 获得指定股票指定年度的负债表
 def get_annual_balancesheet(sec_code , statYYYY):
     q = jq.query(
@@ -56,9 +97,12 @@ def get_valuation(sec_code , yyyy_mm_dd):
                   jq.valuation.code== sec_code,
                   )
 
+    # 传入date时, 查询指定日期date所能看到的最近(对市值表来说, 最近一天, 对其他表来说, 最近一个季度)的数据, 我们会查找上市公司在这个日期之前(包括此日期)发布的数据, 不会有未来函数.
     ret = jq.get_fundamentals(q, date = yyyy_mm_dd)
     if ret is None or len(ret) == 0:
         print "WARN: %s 于 %s 的市值数据资产表没查到 " % (sec_code , yyyy_mm_dd  )
+        return None
+
     return ret
 
 

@@ -134,22 +134,6 @@ def list_index_1_year(code, the_year):
 
 
 
-def is_paused(engine, code, t_day ):
-
-    q = db_operator.query_paused( engine, code, t_day)
-
-    if q is not None:
-        return q == 1
-
-    #print '%s, %s DB里没查到是否停牌' % (code,t_day)
-
-    i = data_fetcher.check_if_paused(code, t_day)
-    
-    db_operator.record_paused(engine , code , t_day, i )
-    
-
-    return i != 0
-
 
 def fetch_magic_candidators(engine,t_day):
     # 中证价值回报量化策略指数的样本空间由满足以下条件的沪深 A 股构成： 
@@ -191,7 +175,7 @@ def fetch_magic_candidators(engine,t_day):
     filtered_3 = []
     # 排除停牌 
     for code in filtered_2:
-        if is_paused(engine, code, t_day):
+        if  data_fetcher.is_paused(engine, code, t_day):
             print "  ...  %s 停牌，排除" % code
             continue
 
@@ -1151,7 +1135,9 @@ def do_some_experiment(engine):
     
     #a = data_fetcher.get_his_until( FH_BASE_CODE   , '2015-08-12', 5)
     #util.bp(a)
-    print jq.get_query_count()
+    #print jq.get_query_count()
+
+    a = data_fetcher.get_trade_days(2017)
     pass
     
     
