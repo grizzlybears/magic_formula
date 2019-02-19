@@ -100,7 +100,7 @@ def get_valuation(sec_code , yyyy_mm_dd):
     # 传入date时, 查询指定日期date所能看到的最近(对市值表来说, 最近一天, 对其他表来说, 最近一个季度)的数据, 我们会查找上市公司在这个日期之前(包括此日期)发布的数据, 不会有未来函数.
     ret = jq.get_fundamentals(q, date = yyyy_mm_dd)
     if ret is None or len(ret) == 0:
-        print "WARN: %s 于 %s 的市值数据资产表没查到 " % (sec_code , yyyy_mm_dd  )
+        print "WARN: %s 于 %s 的市值数据没查到 " % (sec_code , yyyy_mm_dd  )
         return None
 
     return ret
