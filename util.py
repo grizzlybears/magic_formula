@@ -89,6 +89,7 @@ def avg( his  ):
 
     s = 0
     for entry in his:
+        #print entry
         s = s  +  entry[1]
 
     return s / len(his)
@@ -120,5 +121,9 @@ def sum_delta_r( his  ):
     s = (his[len(his) - 1][1] - his[0][2]) / his[0][2]
 
     return s 
+
+# 取2D数组'a2d'中的第'i'列 ('i' start from 0)
+def column_of_a2d(a2d, i ):
+    return [row[i] for row in a2d]
 
 

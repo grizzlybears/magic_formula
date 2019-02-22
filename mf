@@ -89,8 +89,10 @@ def main():
  
     elif ('hh_all' == sub_command or 'hha' == sub_command):  # 下载所有代码的半小时线  hha [startday def '2008-01-01'] [endday(不包括) def today ]
         return kline_downloader.handle_hha( sys.argv[2:], MY_NAME  )
-    elif ('fetch_brk' == sub_command ):  # 下载券商PB策略所需报表数据    fetch_brk [startyear]
+    elif ('fetch_brk' == sub_command ):  # 下载券商PB策略所需报表数据    fetch_brk [startyear] [endyear] 
         return broker_pb_policy.handle_fetch_brk( sys.argv[2:], MY_NAME  )
+    elif ('bt_brk' == sub_command ):  # 回测下载券商PB策略          bt_brk [startday] [endday] [threshold] 
+        return broker_pb_policy.handle_bt_brk( sys.argv[2:], MY_NAME  )
     
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
