@@ -157,7 +157,7 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
  
         # 要操作了
         if VERBOSE:
-            print "============\nT_Day %s,  we hold\n %s" % (row[0], we_hold)
+            print "== T_Day %s,  we hold: ==\n%s" % (row[0], we_hold)
         
         # 这里有一个近似的假设：
         # 我们可以基于昨日的指标，按照昨日的收盘价，进行操作(记作今日操作)，并把操作的损益反映于今日。
@@ -209,7 +209,7 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
                 break;
 
             if VERBOSE:
-                print "应当买入 %s，排名%d" % (code, rank)
+                print "应当买入 %s，排名%d, PB偏离度%f" % (code, rank, indi[1] )
                 #print sorted_y_indices 
 
             to_buy.append(code)
@@ -244,8 +244,11 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
             indi_check_for_sell = y_indices[one_hold.code]
             if indi_check_for_sell[1] > BRK_SELL_THRESOLD: 
                 if VERBOSE:
-                    print "%s, 理想卖出 %s" % (t_day, one_hold.code)
+                    print "%s, 理想卖出 %s, PB偏离度%f" % (t_day, one_hold.code, indi_check_for_sell[1])
                 to_sell.append( one_hold.seq)
+            else:
+                if VERBOSE:
+                    print "%s, 持仓 %s, PB偏离度%f" % (t_day, one_hold.code, indi_check_for_sell[1])
 
         to_hold_codes = we_hold.get_codes_from_holds(  to_hold)
         to_sell_codes = we_hold.get_codes_from_holds( to_sell)
@@ -281,12 +284,14 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
                 trans_cost  = trans_cost + trade_loss
 
                 continue
-            elif one_pos.seq in to_hold:
+            #elif one_pos.seq in to_hold:
+            elif not one_pos.is_blank() :
                 # 更新一下价格
                 one_pos.now_price = md_that_day[one_pos.code ][0] 
 
 
         # 买进操作
+        bought_ones = []
         buy_num = min(len(to_buy) , we_hold.get_blank_num()  )
         if  buy_num > 0:
             
@@ -298,6 +303,8 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
             for one_buy in to_buy:
                 pos = we_hold.find_first_blank_pos()
                 if not  pos:
+                    if VERBOSE:
+                        print "没有空位，无法买入"  
                     break
  
                 trade_price = y_md[one_buy][0]
@@ -307,6 +314,8 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
                 trade_loss   =  trade_amount *  TRADE_COST 
                 
                 op_num = op_num + 1
+                bought_ones.append( one_buy)
+
                 if VERBOSE:
                     print "买入%s, %d股" % (one_buy, trade_volumn) 
                 
@@ -317,6 +326,10 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
                     
                 we_hold.remaining = we_hold.remaining - trade_amount - trade_loss 
                 trans_cost  = trans_cost + trade_loss
+        else:
+            if VERBOSE:
+                if 0 ==  we_hold.get_blank_num() and len(to_buy) > 0:
+                    print "没有空位，无法买入"  
 
         #累计空仓日数
         blank_num = blank_num + we_hold.get_blank_num() 
@@ -328,10 +341,14 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
         base_price = base_md_that_day[0] 
 
         t_policy = we_hold.get_value()  
-        op_num_text = "%d" % op_num
+        if 0 == op_num:
+            op_num_text = None
+        else:
+            op_num_text = "%d" % op_num
+        
         t_hint = util.build_t_hint(t_day
                 , to_sell_codes  
-                , to_buy )
+                , bought_ones )
 
         r_that_day= [ t_day, base_price, t_policy ,op_num_text, t_hint ]
         result.append( r_that_day )
@@ -344,7 +361,7 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
         
         real_tday_num  = real_tday_num + 1
 
-    print "平均每天持有仓数 %f, 每天空仓数 %f" % (float(hold_num) / len(his_data) , float(blank_num)/len(his_data))
+    #print "平均每天持有仓数 %f, 每天空仓数 %f" % (float(hold_num) / len(his_data) , float(blank_num)/len(his_data))
 
     return (result ,  trans_num , trans_cost )
 
