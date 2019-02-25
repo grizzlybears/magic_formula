@@ -555,34 +555,6 @@ def sim_rotate( his_data,  max_hold, base_code, start_day = "", end_day = ""):
 
     return (result ,  trans_num , trans_cost )
 
-# 如果code不在 md_that_day中，则调用jq api获取md
-def smart_get_md_close( t_day, code, md_that_day ):
-    if code in md_that_day:
-        # ‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志]
-        return md_that_day[code ][0] 
- 
-    df = jq.get_price(code
-            , start_date= t_day, end_date=t_day
-            , frequency='daily'
-               #  默认是None(表示[‘open’, ‘close’, ‘high’, ‘low’, ‘volume’, ‘money’]这几个标准字段)
-            , fields=['open', 'close', 'high', 'low', 'volume', 'money', 'high_limit', 'low_limit', 'pre_close', 'paused']
-            , skip_paused=False
-            , fq='pre'
-            )
- 
-    row_count = len(df.index)
-
-    if row_count < 1:
-        raise Exception ("无法获得%s于%s的行情" %(code, t_day) )
-
-    p = df['close'].iloc[0]
-
-    #if math.isnan(p):
-    #    print df 
-    #    raise  Exception ("无法获得%s于%s的收盘是NaN" %(code, t_day) )
-
-    return p
-
 
 # 买最糟轮换策略：
 #     根据指标(目前是N日涨幅)从高到底排名。
@@ -639,7 +611,7 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
             for one_pos in we_hold.pos_entries:
                 if one_pos.is_blank():
                     continue
-                p = smart_get_md_close(t_day,one_pos.code, md_that_day)
+                p = data_fetcher.smart_get_md_close(t_day,one_pos.code, md_that_day)
 
                 if math.isnan(p):
                     print "WARN: %s , %s 的收盘是NaN，不更新持仓价格" % (t_day, one_pos.code)
@@ -759,7 +731,7 @@ def sim_rotate_buy_worst( his_data,  max_hold, howlong,  base_code, start_day = 
             if one_pos.seq in to_sell:
                 # 要卖掉
 
-                trade_price =  smart_get_md_close(y_date,one_pos.code,y_md)  #  FIXME: 如果该code停牌，这里需要寻找到其复牌价
+                trade_price =  data_fetcher.smart_get_md_close(y_date,one_pos.code,y_md)  #  FIXME: 如果该code停牌，这里需要寻找到其复牌价
                 if math.isnan( trade_price):
                     print "WARN: %s , %s 的昨收盘是NaN，只能以最后的持仓价格卖出" % (t_day, one_pos.code)
                     trade_price = one_pos.now_price 

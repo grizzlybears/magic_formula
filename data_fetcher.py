@@ -240,3 +240,32 @@ def fill_stock_name(l):
         si = jq.get_security_info(stock.code)
         stock.name = si.display_name
 
+# 如果code不在 md_that_day中，则调用jq api获取md
+def smart_get_md_close( t_day, code, md_that_day ):
+    if code in md_that_day:
+        # ‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志]
+        return md_that_day[code ][0] 
+ 
+    df = jq.get_price(code
+            , start_date= t_day, end_date=t_day
+            , frequency='daily'
+               #  默认是None(表示[‘open’, ‘close’, ‘high’, ‘low’, ‘volume’, ‘money’]这几个标准字段)
+            , fields=['open', 'close', 'high', 'low', 'volume', 'money', 'high_limit', 'low_limit', 'pre_close', 'paused']
+            , skip_paused=False
+            , fq='pre'
+            )
+ 
+    row_count = len(df.index)
+
+    if row_count < 1:
+        raise Exception ("无法获得%s于%s的行情" %(code, t_day) )
+
+    p = df['close'].iloc[0]
+
+    #if math.isnan(p):
+    #    print df 
+    #    raise  Exception ("无法获得%s于%s的收盘是NaN" %(code, t_day) )
+
+    return p
+
+

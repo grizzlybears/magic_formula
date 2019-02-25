@@ -56,7 +56,7 @@ def fetch_brk_fundamentals_1_year(engine, the_year):
 
     first_t_day = alltday[ 0]
     last_t_day  = alltday[-1]
-    
+
     #2. 获取候选 -- 券商股
     candidators = fetch_brk_candidators( engine,  last_t_day)
     print candidators 
@@ -120,8 +120,8 @@ def fetch_brk_fundamentals_until_now(engine, start_year, end_year ):
 #         日期  基准收盘价   策略净值 交易次数  换仓详细  
 #         ...
 #
-BRK_BUY_THRESOLD  = -1 # PB偏离度 低于这个值就买
-BRK_SELL_THRESOLD = 1  # PB偏离度 高于这个值就卖
+BRK_BUY_THRESOLD  = -0.7 # PB偏离度 低于这个值就买
+BRK_SELL_THRESOLD = -0.5  # PB偏离度 高于这个值就卖
 def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", end_day = ""):    
 
     if len(his_data) == 0:
@@ -264,7 +264,7 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
             if one_pos.seq in to_sell:
                 # 要卖掉
 
-                trade_price =  smart_get_md_close(y_date,one_pos.code,y_md)  #  FIXME: 如果该code停牌，这里需要寻找到其复牌价
+                trade_price =  data_fetcher.smart_get_md_close(y_date,one_pos.code,y_md)  #  FIXME: 如果该code停牌，这里需要寻找到其复牌价
                 if math.isnan( trade_price):
                     print "WARN: %s , %s 的昨收盘是NaN，只能以最后的持仓价格卖出" % (t_day, one_pos.code)
                     trade_price = one_pos.now_price 
@@ -365,6 +365,26 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
 
     return (result ,  trans_num , trans_cost )
 
+def draw_line_for_verifying(his_data):
+    code = his_data[0][1].keys()[0]
+
+    headers = ['日期', 'PB', 'MA2000', 'MA60', 'MA20' ]
+
+    data =  []
+
+    for i, row in enumerate(his_data):
+        t_day = row[0]
+        indices_that_day = row[2]
+        PB = indices_that_day[code][2]
+        MA2000_of_PB = indices_that_day[code][3]
+        MA60_of_PB = indices_that_day[code][5]
+        MA20_of_PB = indices_that_day[code][6]
+
+        data.append( [ t_day, PB, MA2000_of_PB, MA60_of_PB, MA20_of_PB ]  )
+
+    plotter.simple_generate_line_chart(headers, data)
+
+
 
 def bt_brk_pb_policy(engine, start_day, end_day,max_hold, threshold ):
     #从DB抓日线数据
@@ -386,7 +406,7 @@ def bt_brk_pb_policy(engine, start_day, end_day,max_hold, threshold ):
 #     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
 #     ...
 
-    # ‘指标’ 是  [可买标志，N日PB平均，N日PB标准差]
+    # ‘指标’ 是  [可买标志，PB偏离度, PB, N日PB平均，N日PB标准差]
     make_indices_by_pb_standard_deviation( conn,  his_md , threshold)
  
     result, trans_num, trans_cost  = sim_brk_pb_policy( conn,his_md, max_hold , BRK_INDEX, start_day, end_day )    
@@ -427,6 +447,70 @@ def bt_brk_pb_policy(engine, start_day, end_day,max_hold, threshold ):
             , base_delta, policy_delta 
             )
 
+def bt_one_brk_pb_policy(engine, code, start_day, end_day,max_hold, threshold ):
+    #从DB抓日线数据
+    conn = engine.connect()
+
+    # 获取日线数据
+# 返回数组
+#     T_day1,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志, PB, 换手]
+    his_md = db_operator. db_fetch_dailyline_w_valuation_by_code(conn, threshold, code )
+
+    # 在日线数据中，扩充加入指标数据
+# 返回时，数组md_his_data扩充为
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     ...
+
+    # ‘指标’ 是  [可买标志，PB偏离度, PB, N日PB平均，N日PB标准差]
+    make_indices_by_pb_standard_deviation( conn,  his_md , threshold)
+ 
+    #draw_line_for_verifying(his_md)
+    #return 
+    result, trans_num, trans_cost  = sim_brk_pb_policy( conn,his_md, max_hold , BRK_INDEX, start_day, end_day )    
+# Output: 2-D array , 交易数， 交易成本
+#         日期  基准收盘价   策略净值 交易次数  换仓详细  
+#         ...
+#
+
+    #util.bp( result)
+    #准备画图
+
+    #chart_head = ['日期', '50指数', 'MA10'  ]
+    #chart_data=[]
+    #for entry in his_md:
+    #    row = [ entry[0], entry[1][FH_BASE_CODE][0] , entry[2][FH_BASE_CODE][2] ]
+    #    chart_data.append(row)
+    #plotter.simple_generate_line_chart( chart_head, chart_data)
+
+    base_info = data_struct.SecurityInfo()
+    base_info.code = BRK_INDEX 
+    base_info.name = BRK_INDEX_NAME
+
+    secs = [ base_info ]
+
+    suffix = ".from_%s" % start_day
+
+    plotter.generate_htm_chart_for_faster_horse2( secs, result , suffix)
+ 
+    #show summary
+    t_day_num = len(result)
+    base_delta   = result[ t_day_num - 1][1] / result[ 0][1]
+    policy_delta = result[ t_day_num - 1][2] / result[ 0][2]
+
+    print "券商PB策略(%d日), %s ~ %s, %d个交易日，交易%d笔，交易成本%f，基准表现%f，策略表现%f" % (
+             threshold 
+            , result[0][0], result[ t_day_num - 1][0], t_day_num
+            , trans_num,  trans_cost
+            , base_delta, policy_delta 
+            )
+
+
 
 
 # 处理 'fetch_brk' 子命令
@@ -439,7 +523,7 @@ def handle_fetch_brk( argv, argv0 ):
         # get db engine
         engine = db_operator.get_db_engine()
         
-        start_year = 2003  
+        start_year = 2005
 
         i = len(argv)
         now = datetime.now()
@@ -451,10 +535,11 @@ def handle_fetch_brk( argv, argv0 ):
             start_year = int(argv[0])
             
             if ( i >= 2 ):
-                end_year  = argv[1]
+                end_year  = int(argv[1])
 
-        if start_year < 2003:
-            print "开始年份必须不小于2003"
+        # JQ的数据从2005开始
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
             return 1
 
         fetch_brk_fundamentals_until_now(engine, start_year, end_year )
@@ -502,6 +587,50 @@ def handle_bt_brk( argv, argv0 ):
                     threshold  = int(argv[2])
  
         bt_brk_pb_policy(engine, start_day, end_day,max_hold, threshold )
+
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+
+    return 0
+
+# 处理 'bt_one_brk' 子命令
+def handle_bt_one_brk( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        end_day = ''
+        threshold = 2000
+        code = '600030.XSHG'
+
+        i = len(argv)
+        if ( 0 == i  ):
+            start_day = '2014-01-01'  
+        else:
+            code = argv[0]
+
+            if (i >=2):
+                start_day  = argv[1]
+
+                if ( i >= 3 ):
+                    end_day  = argv[2]
+
+                    if (i>=4):
+                        threshold  = int(argv[3])
+ 
+        bt_one_brk_pb_policy(engine,code, start_day, end_day, 1 , threshold )
 
 
     except  Exception as e:

@@ -192,6 +192,9 @@ def extend_indices_add_ma( conn,  his_md, MA_Size1 =5):
 # PB偏离度 = ( PB - MA_of_PB ) / STD_of_PB
 def extend_indices_add_pb_std( conn,  his_md, MA_Size1 = 5):
 
+    #MA_Size2 = 60
+    #MA_Size3 = 20
+
     recent_mds = {}  # 代码==> 该代码最后几交易日的‘行情’  ** 跳过停牌日
                    # 其中‘行情’ 是  [ 
                    #                    [交易日，PB], 
@@ -230,16 +233,23 @@ def extend_indices_add_pb_std( conn,  his_md, MA_Size1 = 5):
                 MA1 = 0
                 std = 0
                 bias = 0
+                #MA2=0
+                #MA3=0
             else:
                 #print recent_mds[code]
                 MA1 = util.avg( recent_mds[code])
                 std = numpy.std( util.column_of_a2d( recent_mds[code],1))
                 bias = (PB - MA1) / std 
+                
+                #MA2 = util.avg( recent_mds[code][ - MA_Size2 :])
+                #MA3 = util.avg( recent_mds[code][ - MA_Size3 :])
 
             indi_of_the_code.append(bias) 
             indi_of_the_code.append(PB) 
             indi_of_the_code.append(MA1) 
             indi_of_the_code.append(std) 
+            #indi_of_the_code.append(MA2) 
+            #indi_of_the_code.append(MA3) 
             
         # 准备走向下一天
         md_prev_day = md_that_day

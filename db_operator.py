@@ -1052,4 +1052,75 @@ order by d.t_day asc, d.code asc
  
     return his_md
 
+def db_fetch_dailyline_w_valuation_by_code(conn, threshold , code ):
+    s = '''
+select d.t_day, d.code, d.close, d.high_limit, d.pre_close, d.paused, v.pb_ratio, v.turnover_ratio 
+from DailyLine as d
+join Valuation as v on (d.code = v.code and d.t_day = v.day)
+where 
+    d.code = '%s' and 
+    d.code in (select code from Valuation  group by code having count(*) > %d)
+order by d.t_day asc, d.code asc 
+            '''  % (  code, threshold )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    # 交易日, 代码，收盘， 涨停价， 前日收盘， 停牌标志 , PB, 换手率
+    # 0       1     2      3        4          5        , 6 , 7
+
+
+    row_num = 0
+    his_md = []
+    last_t_day = ''
+
+    md_of_1_day = collections.OrderedDict ()
+    
+    for row in r:
+
+        t_day = str(row[0])
+        code  = str(row[1])
+        close = row[2]
+
+        if  close is None:
+            print "WARN! skip bad MD:" , row
+            continue 
+
+        if t_day != last_t_day:
+            # 新的一日行情开始
+            is_new_t_day = True
+            if len(md_of_1_day) > 0:
+                his_md.append( [ last_t_day ,  md_of_1_day ] )
+                md_of_1_day = collections.OrderedDict ()
+
+            last_t_day = t_day
+        else:
+            # 对当前日行情，填入新的代码
+            is_new_t_day = False 
+ 
+       
+        if (row[3] - close ) < 0.01:
+            close_on_ceil = 1 
+        else:
+            close_on_ceil = 0
+
+        pre_close = row[4]
+        if pre_close is not None and pre_close != 0:
+            delta_r = (close - pre_close) / pre_close
+        else:
+            delta_r = 0
+
+        paused = row[5]
+        pb     = row[6]
+        turnover = row[7]
+
+            
+        
+        md_of_1_sec  = [close, pre_close, delta_r, close_on_ceil, paused, pb, turnover]   # 收盘价，前日收盘价, 涨幅， 涨停，停牌，PB, 换手
+        md_of_1_day[code] = md_of_1_sec 
+
+    
+    his_md.append( [ last_t_day ,  md_of_1_day ] )
+ 
+    return his_md
+
 

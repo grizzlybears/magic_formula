@@ -91,9 +91,11 @@ def main():
         return kline_downloader.handle_hha( sys.argv[2:], MY_NAME  )
     elif ('fetch_brk' == sub_command ):  # 下载券商PB策略所需报表数据    fetch_brk [startyear] [endyear] 
         return broker_pb_policy.handle_fetch_brk( sys.argv[2:], MY_NAME  )
-    elif ('bt_brk' == sub_command ):  # 回测下载券商PB策略          bt_brk [startday] [endday] [threshold] 
+    elif ('bt_brk' == sub_command ):  # 回测下载券商PB策略(轮换)          bt_brk [startday] [endday] [threshold] 
         return broker_pb_policy.handle_bt_brk( sys.argv[2:], MY_NAME  )
-    
+    elif ('bt_one_brk' == sub_command ):  # 回测下载券商PB策略(单个股票)  bt_one_brk [code]  [startday] [endday] [threshold] 
+        return broker_pb_policy.handle_bt_one_brk( sys.argv[2:], MY_NAME  )
+
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()
