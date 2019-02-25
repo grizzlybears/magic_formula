@@ -235,6 +235,11 @@ def check_if_paused( code, t_day ):
 
     return 0
 
+def get_code_name(code):
+    si = jq.get_security_info(code)
+    return si.display_name
+
+
 def fill_stock_name(l):
     for stock in l:
         si = jq.get_security_info(stock.code)

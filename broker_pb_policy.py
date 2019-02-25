@@ -140,6 +140,9 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
 
     real_tday_num  = 0
 
+    first_output = 1
+    base_scale_factor = 0
+
     for i, row in enumerate(his_data):
  
         t_day = row[0]
@@ -193,8 +196,8 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
                 break
             
             # 比较基准不买
-            if code == base_code:
-                continue
+            #if code == base_code:
+            #    continue
             
             if  not indi[0] or 0== indi[0] :
             #   可买标志       N日PB平均
@@ -337,9 +340,9 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
 #       日期  基准收盘价   策略净值 交易次数  换仓详细  
   
         #base_price = md_that_day[base_code][0]
-        base_md_that_day = db_operator.query_dailyline(conn, t_day, BRK_INDEX)
+        base_md_that_day = db_operator.query_dailyline(conn, t_day, base_code )
         base_price = base_md_that_day[0] 
-
+        
         t_policy = we_hold.get_value()  
         if 0 == op_num:
             op_num_text = None
@@ -349,6 +352,16 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
         t_hint = util.build_t_hint(t_day
                 , to_sell_codes  
                 , bought_ones )
+ 
+        if first_output:
+            first_output  = 0
+            #酌情缩放基准
+            if base_price * 100 < t_policy :
+                base_scale_factor = 100
+            elif base_price * 10 < t_policy :
+                base_scale_factor = 10
+
+        base_price = base_price * base_scale_factor 
 
         r_that_day= [ t_day, base_price, t_policy ,op_num_text, t_hint ]
         result.append( r_that_day )
@@ -472,7 +485,9 @@ def bt_one_brk_pb_policy(engine, code, start_day, end_day,max_hold, threshold ):
  
     #draw_line_for_verifying(his_md)
     #return 
-    result, trans_num, trans_cost  = sim_brk_pb_policy( conn,his_md, max_hold , BRK_INDEX, start_day, end_day )    
+    result, trans_num, trans_cost  = sim_brk_pb_policy( conn,his_md, max_hold 
+            , code
+            , start_day, end_day )    
 # Output: 2-D array , 交易数， 交易成本
 #         日期  基准收盘价   策略净值 交易次数  换仓详细  
 #         ...
@@ -489,8 +504,8 @@ def bt_one_brk_pb_policy(engine, code, start_day, end_day,max_hold, threshold ):
     #plotter.simple_generate_line_chart( chart_head, chart_data)
 
     base_info = data_struct.SecurityInfo()
-    base_info.code = BRK_INDEX 
-    base_info.name = BRK_INDEX_NAME
+    base_info.code = code
+    base_info.name = data_fetcher.get_code_name( code)
 
     secs = [ base_info ]
 
