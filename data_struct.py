@@ -201,6 +201,61 @@ class TotalPosition:
                 return one_hold
         return None
 
+    #统计持仓中，每个代码有几个单位 (用于网格化持仓)
+    def who_howmuch(self):
+        sta = {}
+        for one_hold in self.pos_entries:
+            if one_hold.is_blank():
+                continue
+
+            if one_hold.code in sta:
+                num = sta[one_hold.code] + 1
+            else:
+                num = 1
+
+            sta[one_hold.code] = num 
+
+        return sta
+
+    #指定的代码持有几仓？
+    def get_pos_of_code(self, code):
+        sta = self.who_howmuch()
+        if code in sta:
+            return sta[code]
+
+        return 0
+
+    #返回进价最低的'code'仓位编号，找不到则返回负数。
+    def find_lowest_pos( self, code):
+        no = -1
+        cur_price = 9999999
+
+        for one_hold in self.pos_entries:
+            if one_hold.is_blank() or one_hold.code != code:
+                continue
+            
+            if one_hold.cost_price < cur_price:
+                cur_price = one_hold.cost_price
+                no = one_hold.seq 
+        
+        return no
+                
+    #返回进价最高的'code'仓位编号，找不到则返回负数。
+    def find_highest_pos( self, code):
+        no = -1
+        cur_price = -9999
+
+        for one_hold in self.pos_entries:
+            if one_hold.is_blank() or one_hold.code != code:
+                continue
+            
+            if one_hold.cost_price > cur_price:
+                cur_price = one_hold.cost_price
+                no = one_hold.seq 
+        
+        return no
+ 
+
 # 把初始资金'init_amount'，分成'share_num'个份额
 def make_init_shares( init_amount, share_num):
     each = init_amount / share_num

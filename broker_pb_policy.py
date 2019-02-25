@@ -122,23 +122,21 @@ def fetch_brk_fundamentals_until_now(engine, start_year, end_year ):
 #
 BRK_BUY_THRESOLD  = -0.7 # PB偏离度 低于这个值就买
 BRK_SELL_THRESOLD = -0.5  # PB偏离度 高于这个值就卖
+GRID_UNIT  = 0.2 #每过一个GRID_UNIT就多开一仓
+GRID_DEPTH = 2   #最多开几仓
 def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", end_day = ""):    
 
     if len(his_data) == 0:
         raise Exception("没有行情历史数据。"  );
 
     result = []
-    trans_num = 0 
-    trans_cost = 0.0
     
-    sec_num = len( his_data[0][1])
+    trans_num = 0      # 交易次数
+    trans_cost = 0.0   # 交易成本
 
-    hold_num = 0
     blank_num = 0
 
     we_hold =  data_struct.make_init_shares(INITIAL_BALANCE, max_hold)  # 我们的持仓
-
-    real_tday_num  = 0
 
     first_output = 1
     base_scale_factor = 0
@@ -183,13 +181,12 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
         #print 
         #util.bp(sorted_y_indices)
 
-
         to_hold = []   # 继续持仓的份额编号
         to_sell = []   # 要卖出的份额编号
         to_buy  = []   # 要买进的代码
  
         # 撸一遍昨日M“强”，看看有哪些要买进
-        max_buy = max_hold
+        max_buy = we_hold.get_blank_num()
         rank = 1
         for code,indi  in sorted_y_indices:
             if max_buy <=0 :
@@ -211,19 +208,30 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
                 # 由于是从小到大排序，故以后的entry也不用看了
                 break;
 
-            if VERBOSE:
-                print "应当买入 %s，排名%d, PB偏离度%f" % (code, rank, indi[1] )
-                #print sorted_y_indices 
+            # 在这个点上可以开几仓
+            howmuch_to_buy = 1 + int( (BRK_BUY_THRESOLD - indi[1]) / GRID_UNIT )
 
-            to_buy.append(code)
-            max_buy = max_buy - 1
+            already_hold = we_hold.get_pos_of_code( code)
+            want_to_buy = howmuch_to_buy - already_hold
+
+            buy_howmuch = min( want_to_buy, GRID_DEPTH, max_buy)
+            if buy_howmuch <= 0 :
+                continue
+
+            if VERBOSE:
+                print "应当买入 %s %d仓，排名%d, PB偏离度%f" % (code, buy_howmuch, rank, indi[1] )
+                #print sorted_y_indices 
+    
+            for ii in range(buy_howmuch):
+                to_buy.append(code)
+                max_buy = max_buy - 1
+
             rank = rank + 1
 
 
-        #print "%s:" % t_day 
-        #print we_hold 
-
         # 撸一遍我们的持仓，看看有哪些要持有，哪些要卖
+        who_howmuch = we_hold.who_howmuch()
+
         for one_hold in we_hold.pos_entries:
             
             if one_hold.is_blank():
@@ -235,30 +243,67 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
                 if VERBOSE:
                     print "%s,卖出 %s，因为不在成份里" % (t_day, one_hold.code)
                 continue
-
-            if one_hold.code in to_buy:
-                # 太糟了
-                to_hold.append( one_hold.seq)
-                to_buy.remove( one_hold.code)
-                if VERBOSE:
-                    print "%s, 继续持有 %s" % (t_day, one_hold.code)
-            
+           
             #检查卖出指标
             indi_check_for_sell = y_indices[one_hold.code]
-            if indi_check_for_sell[1] > BRK_SELL_THRESOLD: 
+
+            if indi_check_for_sell[1] >  \
+                BRK_SELL_THRESOLD - ( who_howmuch[one_hold.code] -1 ) * GRID_UNIT :
+                sell_it = True
+               
+                who_howmuch[one_hold.code] = who_howmuch[one_hold.code] - 1
+               
                 if VERBOSE:
-                    print "%s, 理想卖出 %s, PB偏离度%f" % (t_day, one_hold.code, indi_check_for_sell[1])
+                    print "%s, 卖出 %s, PB偏离度%f, 剩余%d仓" % (
+                           t_day
+                           , one_hold.code
+                           , indi_check_for_sell[1]
+                           , who_howmuch[one_hold.code]
+                           )    
+            else:
+                sell_it = False
+
+            #if 1  == who_howmuch[one_hold.code]:
+            #    # 最后一仓，要到卖门槛才卖
+            #    if   indi_check_for_sell[1] > BRK_SELL_THRESOLD: 
+            #        if VERBOSE:
+            #            print "%s, 理想卖出 %s, PB偏离度%f" % (t_day, one_hold.code, indi_check_for_sell[1])    
+            #        sell_it = True
+
+            #    else:
+            #        sell_it = False
+            #else:
+            #    # 网格化卖出
+            #    if indi_check_for_sell[1] >  \
+            #        BRK_BUY_THRESOLD + ( who_howmuch[one_hold.code] -1 ) * GRID_UNIT :
+            #        sell_it = True
+            #        
+            #        who_howmuch[one_hold.code] = who_howmuch[one_hold.code] - 1
+            #        
+            #        if VERBOSE:
+            #            print "%s, 网格卖出 %s, PB偏离度%f, 剩余%d仓" % (
+            #                    t_day
+            #                    , one_hold.code
+            #                    , indi_check_for_sell[1]
+            #                    , who_howmuch[one_hold.code]
+            #                    )    
+            #    else:
+            #        sell_it = False
+
+            if sell_it:
+                
                 to_sell.append( one_hold.seq)
             else:
                 if VERBOSE:
                     print "%s, 持仓 %s, PB偏离度%f" % (t_day, one_hold.code, indi_check_for_sell[1])
+            
+                #继续持有
+                to_hold.append( one_hold.seq)
 
         to_hold_codes = we_hold.get_codes_from_holds(  to_hold)
         to_sell_codes = we_hold.get_codes_from_holds( to_sell)
         
         op_num = 0
-        
-        hold_num = hold_num + len(to_hold)
 
         #print util.build_p_hint( t_day,  to_hold_codes ,  to_sell_codes,  to_buy  )
 
@@ -295,7 +340,8 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
 
         # 买进操作
         bought_ones = []
-        buy_num = min(len(to_buy) , we_hold.get_blank_num()  )
+        #buy_num = min(len(to_buy) , we_hold.get_blank_num()  )
+        buy_num =  we_hold.get_blank_num()
         if  buy_num > 0:
             
             each = we_hold.remaining / buy_num
@@ -371,10 +417,13 @@ def  sim_brk_pb_policy( conn, his_data,  max_hold,  base_code, start_day = "", e
         #print we_hold
             print "\n\n" 
         trans_num = trans_num + op_num 
-        
-        real_tday_num  = real_tday_num + 1
-
-    #print "平均每天持有仓数 %f, 每天空仓数 %f" % (float(hold_num) / len(his_data) , float(blank_num)/len(his_data))
+    
+    print "Buy at %f, sell at %f, depth = %d, unit = %f " % ( 
+            BRK_BUY_THRESOLD ,
+            BRK_SELL_THRESOLD,
+            GRID_DEPTH ,
+            GRID_UNIT
+            )
 
     return (result ,  trans_num , trans_cost )
 
@@ -645,7 +694,7 @@ def handle_bt_one_brk( argv, argv0 ):
                     if (i>=4):
                         threshold  = int(argv[3])
  
-        bt_one_brk_pb_policy(engine,code, start_day, end_day, 1 , threshold )
+        bt_one_brk_pb_policy(engine,code, start_day, end_day, GRID_DEPTH  , threshold )
 
 
     except  Exception as e:
