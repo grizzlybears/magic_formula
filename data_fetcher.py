@@ -274,3 +274,46 @@ def smart_get_md_close( t_day, code, md_that_day ):
     return p
 
 
+# 获得指定股票的分红送转股记录
+def get_distribute_info(sec_code , start_day):
+
+    q = jq.query(
+                jq.finance.STK_XR_XD.company_name
+                ,jq.finance.STK_XR_XD.code
+                ,jq.finance.STK_XR_XD.report_date
+                ,jq.finance.STK_XR_XD.bonus_type #年度分红 中期分红 季度分红 特别分红 向公众股东赠送 股改分红
+                ,jq.finance.STK_XR_XD.board_plan_pub_date  #董事会预案公告日期 
+                ,jq.finance.STK_XR_XD.board_plan_bonusnote  #董事会预案分红说明 每10股送XX转增XX派XX元
+                ,jq.finance.STK_XR_XD.shareholders_plan_pub_date  # 股东大会预案公告日期
+                ,jq.finance.STK_XR_XD.shareholders_plan_bonusnote  #股东大会预案分红说明
+                ,jq.finance.STK_XR_XD.implementation_pub_date  #实施方案公告日期
+                ,jq.finance.STK_XR_XD.implementation_bonusnote #实施方案分红说明
+                ,jq.finance.STK_XR_XD.dividend_ratio    # 送股比例 每10股送XX股
+                ,jq.finance.STK_XR_XD.transfer_ratio    # 转增比例 每10股转增 XX股
+                ,jq.finance.STK_XR_XD.bonus_ratio_rmb   # 每10股派 XX。说明：这里的比例为最新的分配比例，预案公布的时候，预案的分配基数在此维护，如果股东大会或实施方案发生变化，再次进行修改，保证此处为最新的分配基数
+                ,jq.finance.STK_XR_XD.dividend_number  # 送股数量 单位：万股
+                ,jq.finance.STK_XR_XD.transfer_number  # 转增数量 单位：万股
+                ,jq.finance.STK_XR_XD.bonus_amount_rmb # 派息金额(人民币)  单位：万元
+                ,jq.finance.STK_XR_XD.a_registration_date # A股股权登记日
+                ,jq.finance.STK_XR_XD.a_xr_date           # A股除权日
+                ,jq.finance.STK_XR_XD.a_bonus_date        # 派息日(A)
+                ,jq.finance.STK_XR_XD.dividend_arrival_date  #红股到帐日
+                ,jq.finance.STK_XR_XD.a_increment_listing_date  #A股新增股份上市日 
+                ,jq.finance.STK_XR_XD.total_capital_before_transfer  #送转前总股本 单位：万股
+                ,jq.finance.STK_XR_XD.total_capital_after_transfer   #送转后总股本
+                ,jq.finance.STK_XR_XD.float_capital_before_transfer  #送转前流通股本
+                ,jq.finance.STK_XR_XD.float_capital_after_transfer   #送转后流通股本
+                ,jq.finance.STK_XR_XD.plan_progress_code     # 方案进度编码
+                ,jq.finance.STK_XR_XD.plan_progress          # 方案进度说明
+            ).filter(
+                jq.finance.STK_XR_XD.code == sec_code
+                ,jq.finance.STK_XR_XD.report_date >= start_day
+            ).order_by (
+                jq.finance.STK_XR_XD.report_date
+            )
+    # 返回一个 dataframe， 每一行对应数据表中的一条数据， 列索引是你所查询的字段名称
+    df=jq.finance.run_query(q)
+
+    return df
+
+

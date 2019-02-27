@@ -1137,7 +1137,10 @@ def do_some_experiment(engine):
     #util.bp(a)
     #print jq.get_query_count()
 
-    a = data_fetcher.get_trade_days(2017)
+    #a = data_fetcher.get_trade_days(2017)
+    df = data_fetcher.get_distribute_info('600030.XSHG', '2005-01-01')
+    #util.print_df_all(df)
+    print df.to_string()
     pass
     
     
