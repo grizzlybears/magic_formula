@@ -22,6 +22,7 @@ import magic
 import rotate
 import kline_downloader
 import broker_pb_policy
+import xrxd_research
 
 
 MY_NAME='mf'
@@ -96,6 +97,8 @@ def main():
     elif ('bt_one_brk' == sub_command ):  # 回测下载券商PB策略(单个股票)  bt_one_brk [code]  [startday] [endday] [threshold] 
         return broker_pb_policy.handle_bt_one_brk( sys.argv[2:], MY_NAME  )
 
+    elif ('fetch_xrxd' == sub_command ):  # 下载分红数据    fetch_brk [startyear] [endyear]
+        pass
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()

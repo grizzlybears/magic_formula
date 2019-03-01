@@ -9,7 +9,9 @@ import json
 import  pandas as pd
 
 def print_df_all(df):
-    with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+    with pd.option_context('display.max_rows', None
+            , 'display.max_columns', None
+            ):
         print(df)
 
 def bp( var ):

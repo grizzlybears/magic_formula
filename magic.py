@@ -1138,9 +1138,14 @@ def do_some_experiment(engine):
     #print jq.get_query_count()
 
     #a = data_fetcher.get_trade_days(2017)
-    df = data_fetcher.get_distribute_info('600030.XSHG', '2005-01-01')
+    #df = data_fetcher.get_distribute_info('600030.XSHG', '2005-01-01')
+    #df = data_fetcher.get_distribute_info('000338.XSHE', '2005-01-01')
     #util.print_df_all(df)
-    print df.to_string()
+    #print df.to_string()
+
+    df = data_fetcher.get_XrXd_by_year( 2017)  
+    db_operator.save_XrXd_df_to_db( engine, df)
+
     pass
     
     

@@ -64,6 +64,65 @@ CREATE TABLE IF NOT EXISTS "Valuation" (
     
     conn.execute( sql) 
 
+
+# report_date  一般为：一季报:YYYY-03-31;中报:YYYY-06-30;三季报:YYYY-09-30;年报:YYYY-12-31同时也可能存在其他日期
+def create_XrXd_table(conn):
+    sql= '''
+CREATE TABLE IF NOT EXISTS "XrXd" (
+    id BIGINT, 
+    code TEXT, 
+    company_id   int,
+    company_name TEXT,
+    report_date  TEXT,
+    bonus_type   TEXT,
+    board_plan_pub_date  TEXT,
+    board_plan_bonusnote TEXT,
+    distributed_share_base_board  TEXT,
+    shareholders_plan_pub_date    TEXT,
+    shareholders_plan_bonusnote   TEXT,
+    distributed_share_base_shareholders  TEXT,
+    implementation_pub_date       TEXT,
+    implementation_bonusnote      TEXT,
+    distributed_share_base_implement  TEXT,
+    dividend_ratio    float,
+    transfer_ratio    float,
+    bonus_ratio_rmb   float,
+    bonus_ratio_usd   float,
+    bonus_ratio_hkd   float,
+    at_bonus_ratio_rmb  float,
+    exchange_rate     float,
+    dividend_number   float,
+    transfer_number   float,
+    bonus_amount_rmb  float,
+    a_registration_date  TEXT,
+    b_registration_date  TEXT,
+    a_xr_date       TEXT,
+    b_xr_baseday    TEXT,
+    b_final_trade_date   TEXT,
+    a_bonus_date    TEXT,
+    b_bonus_date    TEXT,
+    dividend_arrival_date TEXT,
+    a_increment_listing_date  TEXT,
+    b_increment_listing_date  TEXT,
+    total_capital_before_transfer  float,
+    total_capital_after_transfer   float,
+    float_capital_before_transfer  float,
+    float_capital_after_transfer   float,
+    note TEXT,
+    a_transfer_arrival_date  TEXT,
+    b_transfer_arrival_date  TEXT,
+    b_dividend_arrival_date  TEXT,
+    note_of_no_dividend      TEXT,
+    plan_progress_code       int,
+    plan_progress            TEXT,
+    bonus_cancel_pub_date    TEXT,
+
+    PRIMARY KEY( id)
+    );
+    '''
+    conn.execute( sql) 
+
+
 def create_balance_table(conn):
     sql = ''' CREATE TABLE IF NOT EXISTS BalanceSheetDay (
        id  BIGINT
@@ -353,12 +412,42 @@ def get_db_conn():
 
     create_sub_line_table(conn)
 
+    create_XrXd_table(conn)
+
     conn.commit()
 
     return conn 
 
 
-    
+def save_XrXd_df_to_db(engine, df):
+
+    ##conn = engine.connect()
+    ##trans = conn.begin()
+    ##try:
+    ##    start_d = '%d-01-01' % year
+    ##    end_d   = '%d-01-01' % (year +1)
+
+    ##    s = alch_text(
+    ##        '''
+    ##        delete from  XrXd 
+    ##        where report_date between  :A and  :B 
+    ##        '''
+    ##        )
+
+    ##    conn.execute( s, A = year, B = compo_m  )
+    ##        
+    ##    trans.commit()
+    ##except Exception as e:
+    ##    trans.rollback()
+    ##    raise e
+
+    ## 我们只关心‘已经实施’的分红除权记录，而‘已经实施’的记录是不会再变的，因此无须删除DB里原有记录
+
+    a = nr.clean_df_db_dups(df ,'XrXd', engine, ['id'] ) 
+
+    a.to_sql( 'XrXd', con = engine , index=False, if_exists='append')
+
+   
 def save_balance_df_to_db(engine, dataframe ):
     #pd.set_option('display.max_columns', 200)
 
