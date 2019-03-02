@@ -447,7 +447,7 @@ def save_XrXd_df_to_db(engine, df):
 
     a.to_sql( 'XrXd', con = engine , index=False, if_exists='append')
 
-   
+  
 def save_balance_df_to_db(engine, dataframe ):
     #pd.set_option('display.max_columns', 200)
 

@@ -31,7 +31,7 @@ VERBOSE = 1
     #BRK_INDEX = '399975.XSHE'    # 不适合，2015开始才有数据
     #BRK_INDEX_NAME = '中证券商'
 
-BRK_INDEX = '000300.XSHG'    # 不适合，2015开始才有数据
+BRK_INDEX = '000300.XSHG'    
 BRK_INDEX_NAME = '沪深300'
 
 INITIAL_BALANCE = 10000.0  # 策略期初金额

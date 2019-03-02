@@ -131,6 +131,26 @@ def get_daily_line(sec_code , t_start, t_end ):
 
     return df
 
+# 获得指定股票指定天数的日线
+def get_daily_line_n(sec_code , t_start, howmany ):
+
+    dt_delta = timedelta( days =  howmany *2 + 10 )
+    dt_end   = t_start + dt_delta
+
+    #print "    fetch daily line of %s, %s ~ %s" % ( sec_code, t_start, t_end  )
+    df = jq.get_price(sec_code
+            , start_date = t_start, end_date = dt_end
+            , frequency='daily'
+               #  默认是None(表示[‘open’, ‘close’, ‘high’, ‘low’, ‘volume’, ‘money’]这几个标准字段)
+            , fields=['open', 'close', 'high', 'low', 'volume', 'money', 'high_limit', 'low_limit', 'pre_close', 'paused']
+            , skip_paused=True
+            , fq='pre'
+            )
+
+    # 只要前 howmany 行
+    return df.iloc[ 0: howmany - 1 ]
+
+
 # 获得指定股票某天为之，最后N交易日的行情 
 
 # 返回这样的数组 [ 
