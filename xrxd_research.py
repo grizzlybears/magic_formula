@@ -30,11 +30,11 @@ BASE_CODE = '000300.XSHG'
 BASE_NAME = '沪深300'
 
 
-def fetch_md_of_register_day(engine, code, register_day):
-    print "下载%s的登记日(%s)行情" % (code, register_day)
+def fetch_md_of_register_day(engine, code, register_day, memo):
+    print "下载%s的%s(%s)行情" % (code, memo, register_day)
 
     if register_day is None:
-        print "%s的登记日为空，略过" % code
+        print "%s的%s为空，略过" % (code, memo)
         return 
 
     df = data_fetcher.get_daily_line_n(code , register_day, 2)
@@ -60,22 +60,31 @@ def fetch_1_year_base(engine, year ):
 def fetch_1_year_xrxd(engine, year ):
 
     print "下载%d年所有股票的除权除息数据" % year
-    ## 抓除权除息数据
-    #df_xrxd = data_fetcher.get_XrXd_by_year( year)  
+    # 抓除权除息数据
+    df_xrxd = data_fetcher.get_XrXd_by_year( year)  
     #db_operator.save_XrXd_df_to_db( engine, df_xrxd)
 
-    ## 逐条除权除息数据去抓目标股票的登记日(以及次日)市值/行情
+    # 逐条除权除息数据去抓目标股票的登记日(以及次日)市值/行情
+    row_num = len(df_xrxd.index)
+    for i in range(row_num):
 
-    #row_num = len(df_xrxd.index)
-    #for i in range(row_num):
+        code          = df_xrxd.iloc[i]['code']
+        register_day  = df_xrxd.iloc[i]['a_registration_date']
+        #fetch_md_of_register_day(engine, code, register_day, '登记日')
+ 
+        board_plan_pub_date = df_xrxd.iloc[i]['board_plan_pub_date']
+        fetch_md_of_register_day(engine, code, board_plan_pub_date , '董事会公告日')
 
-    #    code          = df_xrxd.iloc[i]['code']
-    #    register_day  = df_xrxd.iloc[i]['a_registration_date']
-    #    fetch_md_of_register_day(engine, code, register_day)
+        shareholders_plan_pub_date = df_xrxd.iloc[i]['shareholders_plan_pub_date']
+        fetch_md_of_register_day(engine, code, shareholders_plan_pub_date , '股东大会公告日')
+
+        implementation_pub_date = df_xrxd.iloc[i]['implementation_pub_date']
+        fetch_md_of_register_day(engine, code, implementation_pub_date , '实施公告日')
+
 
     # 比较基准 
-    print "下载%d年比较基准行情" % year
-    fetch_1_year_base(engine, year)
+    #print "下载%d年比较基准行情" % year
+    #fetch_1_year_base(engine, year)
     
     
 def fetch_xrxd(engine, start_year, end_year ):

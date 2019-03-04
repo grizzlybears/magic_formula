@@ -317,5 +317,5 @@ class XrXdInfo:
     distr_r = 0.0
 
     # 登记日总市值(亿元)  
-    market_cap  0.0
+    market_cap = 0.0
 
