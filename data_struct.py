@@ -272,4 +272,50 @@ def make_init_shares( init_amount, share_num):
     return total_pos 
 
 
+class XrXdInfo:
+    #代码
+    code = ''
+
+    #报告期
+    report_date = ''
+
+    #董事会公告日
+    board_plan_pub_date = ''
+    #董事会公告方案
+    board_plan_bonusnote = ''
+
+    #股东大会公告日
+    shareholders_plan_pub_date =''
+    #股东大会方案 
+    shareholders_plan_bonusnote = ''
+
+    #实施公告日
+    implementation_pub_date = ''
+    #实施方案
+    implementation_bonusnote = ''
+
+    #A股登记日
+    a_registration_date = ''
+    #每10股送几股
+    dividend_ratio = 0
+    #每10股转几股   
+    transfer_ratio = 0 
+    #每10股派多少  
+    bonus_ratio_rmb = 0.0
+
+    #分配基盘(万股)
+    distributed_share_base_implement = 0.0
+    #送股数(万股) 
+    dividend_number = 0.0
+    #转股数  (万股) 
+    transfer_number = 0.0
+    #分红额(万元)  
+    bonus_amount_rmb = 0.0
+
+
+    # 股息率
+    distr_r = 0.0
+
+    # 登记日总市值(亿元)  
+    market_cap  0.0
 

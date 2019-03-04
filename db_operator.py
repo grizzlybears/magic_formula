@@ -1212,4 +1212,42 @@ order by d.t_day asc, d.code asc
  
     return his_md
 
+# 返回数组:
+
+def db_fetch_xrxd(conn, start_y, end_y,  ):
+    
+    s = '''
+select x.code,  x.report_date
+    , board_plan_pub_date, board_plan_bonusnote
+    , shareholders_plan_pub_date, shareholders_plan_bonusnote
+    , implementation_pub_date, implementation_bonusnote 
+    , a_registration_date, dividend_ratio, transfer_ratio, bonus_ratio_rmb
+    , distributed_share_base_implement, dividend_number, transfer_number, bonus_amount_rmb
+    , bonus_amount_rmb/10000/v.market_cap as distr_r, v.market_cap
+from XrXd x 
+join Valuation v on (x.code = v.code and x.a_registration_date = v.day )
+where
+    x.report_date >= '%s' and x.report_date <= '%s'
+order by x.code, x.report_date
+
+            '''  % ( y , m )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    # 代码, 名称，交易日
+    # 0     1          2
+
+    tr_list = []
+
+    for row in r:
+        tr = data_struct.TradeRecord()
+
+        tr.code  = row[0]
+        tr.name  = row[1]
+        tr.t_day = row[2]
+        
+        tr_list.append( tr )
+
+    return tr_list
+
 
