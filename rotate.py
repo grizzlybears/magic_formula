@@ -64,6 +64,7 @@ def fetch_dailyline_in_pool_until_now(engine, pool, start_year):
     df_low_limit  = pn['low_limit']
     df_pre_close  = pn['pre_close']
     df_paused     = pn['paused']
+    df_factor     = pn['factor']
 
     row_num = len(df_open.index)
     print "从%d开始至今，有%d交易日" % ( start_year, row_num)
@@ -96,6 +97,7 @@ def fetch_dailyline_in_pool_until_now(engine, pool, start_year):
                 , df_low_limit[one_compo].iloc[i]
                 , df_pre_close[one_compo].iloc[i]
                 , df_paused[one_compo].iloc[i]
+                , df_factor[one_compo].iloc[i]
                 )
 
 

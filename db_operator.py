@@ -287,8 +287,10 @@ CREATE TABLE if not exists "DailyLine" (
     high_limit FLOAT,
     low_limit  FLOAT,
     pre_close  FLOAT,
-    paused     INT
-    , PRIMARY KEY( code, t_day)
+    paused     INT,
+    factor     FLOAT,
+   
+    PRIMARY KEY( code, t_day)
 );
     '''
     conn.execute( sql) 
@@ -543,7 +545,7 @@ def record_paused(engine, code, t_day, is_paused ):
 
     r = conn.execute( ins )
 
-def db_save_dailyline(engine, code, t_day, open_,close_,high, low,volume,money, high_limit, low_limit, pre_close, paused ):
+def db_save_dailyline(engine, code, t_day, open_,close_,high, low,volume,money, high_limit, low_limit, pre_close, paused, factor ):
 
     conn = engine.connect()
 
@@ -576,6 +578,7 @@ def db_save_dailyline(engine, code, t_day, open_,close_,high, low,volume,money, 
             , low_limit  = low_limit
             , pre_close  = pre_close
             , paused = paused
+            , factor = factor
             )
         r = conn.execute( ins )
      

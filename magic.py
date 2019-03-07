@@ -1128,7 +1128,9 @@ def show_wanke_2017_income():
     #    print y
     #print 
 
-
+# 返回三元组 送，转，派    (每10股)
+def parse_xrxd_note(note):
+    pass
 
 def do_some_experiment(engine):
     #show_wanke_2017_income()
@@ -1146,8 +1148,8 @@ def do_some_experiment(engine):
     #df = data_fetcher.get_XrXd_by_year( 2017)  
     #db_operator.save_XrXd_df_to_db( engine, df)
 
-    df = data_fetcher.get_valuation('600030.XSHG' ,'2019-02-28')
-    util.print_df_all(df)
+    #df = data_fetcher.get_valuation('600030.XSHG' ,'2019-02-28')
+    #util.print_df_all(df)
     pass
     
     

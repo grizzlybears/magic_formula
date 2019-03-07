@@ -29,6 +29,8 @@ import make_indices
 BASE_CODE = '000300.XSHG'    
 BASE_NAME = '沪深300'
 
+HOWLONG_FROM_PUB_DAY = 3
+
 
 def fetch_md_of_register_day(engine, code, register_day, memo):
     print "下载%s的%s(%s)行情" % (code, memo, register_day)
@@ -37,11 +39,15 @@ def fetch_md_of_register_day(engine, code, register_day, memo):
         print "%s的%s为空，略过" % (code, memo)
         return 
 
-    df = data_fetcher.get_daily_line_n(code , register_day, 2)
+    df = data_fetcher.get_daily_line_n(code , register_day, HOWLONG_FROM_PUB_DAY )
+    if len(df.index) == 0 : 
+        print "%s的%s行情未获得，略过" % (code, memo)
+        return 
+
     db_operator.save_daily_line_to_db(engine, code, df)
 
-    df_va = data_fetcher.get_valuation( code , register_day)
-    db_operator.save_valuation_df_to_db (engine, df_va)
+    #df_va = data_fetcher.get_valuation( code , register_day)
+    #db_operator.save_valuation_df_to_db (engine, df_va)
 
 def fetch_1_year_base(engine, year ):
     print "下载%d年基准的日线" % year
@@ -62,7 +68,7 @@ def fetch_1_year_xrxd(engine, year ):
     print "下载%d年所有股票的除权除息数据" % year
     # 抓除权除息数据
     df_xrxd = data_fetcher.get_XrXd_by_year( year)  
-    #db_operator.save_XrXd_df_to_db( engine, df_xrxd)
+    db_operator.save_XrXd_df_to_db( engine, df_xrxd)
 
     # 逐条除权除息数据去抓目标股票的登记日(以及次日)市值/行情
     row_num = len(df_xrxd.index)
@@ -70,8 +76,12 @@ def fetch_1_year_xrxd(engine, year ):
 
         code          = df_xrxd.iloc[i]['code']
         register_day  = df_xrxd.iloc[i]['a_registration_date']
-        #fetch_md_of_register_day(engine, code, register_day, '登记日')
- 
+        
+        if register_day is None:
+            print "%s的A股登记日为空，略过" % code
+            continue
+        fetch_md_of_register_day(engine, code, register_day, '登记日')
+        
         board_plan_pub_date = df_xrxd.iloc[i]['board_plan_pub_date']
         fetch_md_of_register_day(engine, code, board_plan_pub_date , '董事会公告日')
 
@@ -83,8 +93,7 @@ def fetch_1_year_xrxd(engine, year ):
 
 
     # 比较基准 
-    #print "下载%d年比较基准行情" % year
-    #fetch_1_year_base(engine, year)
+    fetch_1_year_base(engine, year)
     
     
 def fetch_xrxd(engine, start_year, end_year ):
@@ -143,18 +152,6 @@ def handle_fetch_xrxd( argv, argv0 ):
 
 
     return 0
-
-# select x.code, x.company_name, x.report_date, implementation_bonusnote ,a_registration_date
-#     , bonus_amount_rmb/10000/v.market_cap as distr_r
-#     , (t.close - t.pre_close) / t.pre_close as delta 
-#     , (b.close - b.pre_close) / b.pre_close as base_delta 
-#     , bonus_amount_rmb, v.market_cap
-# from XrXd x 
-# join Valuation v on (x.code = v.code and x.a_registration_date = v.day )
-# left join DailyLine t on (x.code = t.code and x.a_registration_date = t.t_day)
-# left join DailyLine b on (b.code = '000300.XSHG' and x.a_registration_date = b.t_day)
-# where bonus_amount_rmb is not null and distr_r > 0.01
-# order by x.code, x.report_date
 
 def sum_xrxd(engine, start_year, end_year ):
     pass
