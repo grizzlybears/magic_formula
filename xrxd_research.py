@@ -46,8 +46,8 @@ def fetch_md_of_register_day(engine, code, register_day, memo):
 
     db_operator.save_daily_line_to_db(engine, code, df)
 
-    #df_va = data_fetcher.get_valuation( code , register_day)
-    #db_operator.save_valuation_df_to_db (engine, df_va)
+    df_va = data_fetcher.get_valuation( code , register_day)
+    db_operator.save_valuation_df_to_db (engine, df_va)
 
 def fetch_1_year_base(engine, year ):
     print "下载%d年基准的日线" % year

@@ -1117,7 +1117,6 @@ def show_wanke_2017_income():
 
     print
 
-
     #with pd.option_context('display.max_rows', None, 'display.max_columns', 8):
     #    print q4
     #print 
@@ -1129,57 +1128,27 @@ def show_wanke_2017_income():
     #    print y
     #print 
 
-# 返回三元组 送，转，派    (每10股)
-def parse_xrxd_note(note):
-    
-    print note 
-    
-    # 10[送x股][转增y股][派z元(含税)]
-    pattern = re.compile(u"^10(送([0-9\.]+)股?)?(转增([0-9\.]+)股)?(派([0-9\.]+)港?元)?")
-    
-    matched = 0
-    m = pattern.match( unicode(note))
-    if m:
-        s = u""
-        s = s + m.group(0)
-        for g in m.groups():
-            if g:
-                s = s + u", " + g
-            else:
-                s = s + u", None"
-        
-        if len(m.groups()) == 6 and \
-            (m.group(1) is not None or m.group(3) is not None or m.group(5) is not None  ):
-            matched = 1
-
-            print s
-
-
-    if not matched:
-        print "无法解析分红文本!"
-        
-    print
 
 def test_parsing_xrxd():
-    a = parse_xrxd_note("10送1股派1元（含税）")
-    a = parse_xrxd_note("10派0.70元（含税）")
-    a = parse_xrxd_note("10转增8股")
-    a = parse_xrxd_note("10送2股派0.5元（含税）")
-    a = parse_xrxd_note("10转增3.87股")
-    a = parse_xrxd_note("10转增6股派1元（含税）")
-    a = parse_xrxd_note("10送3转增7股派1元（含税）")
-    a = parse_xrxd_note("10送0.5转增2股派0.5元（含税）")
-    a = parse_xrxd_note("10转增3.5股派1.5元（含税）")
-    a = parse_xrxd_note("10送1转增6股派5元（含税）")
-    a = parse_xrxd_note("10转增1.1331股")
-    a = parse_xrxd_note("10派0.4852元港币（含税）")
-    a = parse_xrxd_note("10派0.3381港元（含税）")
-    a = parse_xrxd_note("10送2转增8股派0.23元(含税)")
-    a = parse_xrxd_note("10转增1.5518股")
-    a = parse_xrxd_note("10转增3股")
-    a = parse_xrxd_note("10送2股派0.25元（含税）")
-    a = parse_xrxd_note("10送0.43913股派0.0488元(含税)")
-    a = parse_xrxd_note("10送aaaa股派bbbb元(含税)")
+    a = util.parse_xrxd_note("10送1股派1元（含税）")
+    a = util.parse_xrxd_note("10派0.70元（含税）")
+    a = util.parse_xrxd_note("10转增8股")
+    a = util.parse_xrxd_note("10送2股派0.5元（含税）")
+    a = util.parse_xrxd_note("10转增3.87股")
+    a = util.parse_xrxd_note("10转增6股派1元（含税）")
+    a = util.parse_xrxd_note("10送3转增7股派1元（含税）")
+    a = util.parse_xrxd_note("10送0.5转增2股派0.5元（含税）")
+    a = util.parse_xrxd_note("10转增3.5股派1.5元（含税）")
+    a = util.parse_xrxd_note("10送1转增6股派5元（含税）")
+    a = util.parse_xrxd_note("10转增1.1331股")
+    a = util.parse_xrxd_note("10派0.4852元港币（含税）")
+    a = util.parse_xrxd_note("10派0.3381港元（含税）")
+    a = util.parse_xrxd_note("10送2转增8股派0.23元(含税)")
+    a = util.parse_xrxd_note("10转增1.5518股")
+    a = util.parse_xrxd_note("10转增3股")
+    a = util.parse_xrxd_note("10送2股派0.25元（含税）")
+    a = util.parse_xrxd_note("10送0.43913股派0.0488元(含税)")
+    a = util.parse_xrxd_note("10送aaaa股派bbbb元(含税)")
 
 
 
@@ -1203,7 +1172,29 @@ def do_some_experiment(engine):
     #df = data_fetcher.get_valuation('600030.XSHG' ,'2019-02-28')
     #util.print_df_all(df)
     
-    test_parsing_xrxd()
+    #test_parsing_xrxd()
+
+    conn = engine.connect()
+    xrxd_records = db_operator.db_fetch_xrxd( conn, '2005-01-01', '2018-01-01')
+
+    for r in xrxd_records:
+        #print r.code, r.report_date 
+        if r.board_plan_bonusnote:
+            p = util.parse_xrxd_note(r.board_plan_bonusnote )
+            if p is None :
+                print "WARN: 无法解析 %s 报告期%s 的董事会预告方案 -- %s" % (r.code, r.report_date,r.board_plan_bonusnote  )
+
+        if r.shareholders_plan_bonusnote:
+            p = util.parse_xrxd_note(r.shareholders_plan_bonusnote )
+            if  p is None :
+                print "WARN: 无法解析 %s 报告期%s 的股东大会预告方案 -- %s" % (r.code, r.report_date,r.shareholders_plan_bonusnote )
+
+        if r.shareholders_plan_bonusnote:
+            p = util.parse_xrxd_note(r.implementation_bonusnote )
+            if   p is None :
+                print "WARN: 无法解析 %s 报告期%s 的实施方案 -- %s" % (r.code, r.report_date,r.implementation_bonusnote )
+
+
     pass
     
     

@@ -1217,7 +1217,7 @@ order by d.t_day asc, d.code asc
 
 # 返回数组:
 
-def db_fetch_xrxd(conn, start_y, end_y,  ):
+def db_fetch_xrxd(conn, start_d, end_d  ):
     
     s = '''
 select x.code,  x.report_date
@@ -1233,23 +1233,62 @@ where
     x.report_date >= '%s' and x.report_date <= '%s'
 order by x.code, x.report_date
 
-            '''  % ( y , m )
+            '''  % ( start_d , end_d )
 
     r = conn.execute( alch_text(s) ).fetchall()
-
-    # 代码, 名称，交易日
-    # 0     1          2
 
     tr_list = []
 
     for row in r:
-        tr = data_struct.TradeRecord()
+        tr = data_struct.XrXdInfo()
 
-        tr.code  = row[0]
-        tr.name  = row[1]
-        tr.t_day = row[2]
+        #代码
+        tr.code = row[0]
+
+        #报告期
+        tr.report_date = row[1]
+
+        #董事会公告日
+        tr.board_plan_pub_date = row[2]
+        #董事会公告方案
+        tr.board_plan_bonusnote = row[3]
+
+        #股东大会公告日
+        tr.shareholders_plan_pub_date = row[4]
+        #股东大会方案 
+        tr.shareholders_plan_bonusnote = row[5]
+
+        #实施公告日
+        tr.implementation_pub_date = row[6]
+        #实施方案
+        tr.implementation_bonusnote = row[7]
+
+        #A股登记日
+        tr.a_registration_date = row[8]
+        #每10股送几股
+        tr.dividend_ratio = row[9]
+        #每10股转几股   
+        tr.transfer_ratio = row[10]
+        #每10股派多少  
+        tr.bonus_ratio_rmb = row[11]
+
+        #分配基盘(万股)
+        tr.distributed_share_base_implement = row[12]
+        #送股数(万股) 
+        tr.dividend_number = row[13]
+        #转股数  (万股) 
+        tr.transfer_number = row[14]
+        #分红额(万元)  
+        tr.bonus_amount_rmb = row[15]
+
+
+        # 股息率
+        tr.distr_r = row[16]
+
+        # 登记日总市值(亿元)  
+        tr.market_cap = row[17]
         
-        tr_list.append( tr )
+        tr_list.append(tr)
 
     return tr_list
 

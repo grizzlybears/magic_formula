@@ -2,7 +2,7 @@
 
 import pprint
 import os
-
+import re
 import collections
 import json 
 
@@ -134,4 +134,47 @@ def sum_delta_r( his  ):
 def column_of_a2d(a2d, i ):
     return [row[i] for row in a2d]
 
+
+def uni_2_float(a):
+    if a is None:
+        return None
+
+    return float(str(a))
+
+# 返回三元组 送，转，派    (每10股)
+def parse_xrxd_note(note):
+    
+    #print note 
+
+    no_space =""
+    for c in note:
+        if c != ' ':
+            no_space = no_space + c
+    
+    # 10[送x股][转增y股][派z元(含税)]
+    pattern = re.compile(u"^10股?(送([0-9\.]+)股?)?(转[增|赠|増]?([0-9\.]+)股?)?(派([0-9\.]+)[港|美]?元?)?")
+    
+    matched = 0
+    m = pattern.match( unicode(no_space))
+    if m:
+        s = u""
+        s = s + m.group(0)
+        for g in m.groups():
+            if g:
+                s = s + u", " + g
+            else:
+                s = s + u", None"
+        
+        if len(m.groups()) == 6 and \
+            (m.group(1) is not None or m.group(3) is not None or m.group(5) is not None  ):
+            matched = 1
+
+
+            return ( uni_2_float(m.group(2)), uni_2_float(m.group(4)), uni_2_float(m.group(6))  )
+            # print s
+
+    if not matched:
+        #print "无法解析分红文本!"
+        return None 
+        
 
