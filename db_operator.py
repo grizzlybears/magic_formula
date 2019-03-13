@@ -976,13 +976,32 @@ def db_save_simu_trade_list(conn, year, month, buy_list, sell_list ):
 
     return
 
-# 返回  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
+# 返回  [收盘价，开盘价，前日收盘价, 停牌标志]
 def query_dailyline(conn, t_day, code):
     s = '''
-select close, high_limit, pre_close, paused
+select close, open , pre_close, paused
 from DailyLine
 where t_day =  '%s' and code='%s' 
             '''  % ( t_day,code )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    if 0 == len(r):
+        return None
+
+    return r[0]
+
+# 返回  [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
+def query_first_dailyline(conn, from_day, code):
+    s = '''
+select t_day, close, open, pre_close, factor 
+from DailyLine
+where 
+    t_day >=  '%s' and code='%s' 
+    and paused = 0
+order by t_day
+limit 3
+            '''  % ( from_day,code )
 
     r = conn.execute( alch_text(s) ).fetchall()
 

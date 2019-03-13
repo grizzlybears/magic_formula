@@ -319,3 +319,43 @@ class XrXdInfo:
     # 登记日总市值(亿元)  
     market_cap = 0.0
 
+    # 董事会公告后行情
+    md_of_board = None
+
+    #股东大会公告后行情
+    md_of_shareholders = None
+
+    #实施公告后行情
+    md_of_implementation = None 
+
+    #A股登记日行情
+    md_of_registration  = None
+
+
+class XrXdCheckInfo: 
+    # 调研日，一般是 董事会公告日/股东大会公告日/实施公告日/登记日 之一
+    check_date = ''
+
+    check_reason = ''
+
+    #每10股送几股
+    dividend_ratio = 0
+    #每10股转几股   
+    transfer_ratio = 0 
+    #每10股派多少  
+    bonus_ratio_rmb = 0.0
+
+    #第一个交易日
+    t_day = ''
+
+    #第一个交易日的行情
+    p_open  = 0.0
+    p_close = 0.0
+    p_pre_close = 0.0
+
+    #同日比较标准的行情
+    b_open = 0.0
+    b_close = 0.0
+    b_pre_close = 0.0
+
+   

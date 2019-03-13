@@ -146,6 +146,9 @@ def parse_xrxd_note(note):
     
     #print note 
 
+    if note is None:
+        return None
+
     no_space =""
     for c in note:
         if c != ' ':
