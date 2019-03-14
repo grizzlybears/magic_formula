@@ -270,7 +270,7 @@ def check_1_xrxd(conn, xrxd):
             )
  
     # 股东实施公告日
-    xrxd.md_of_shareholders = check_md_of_spec_day( conn, 
+    xrxd.md_of_implementation  = check_md_of_spec_day( conn, 
             xrxd.code, 
             xrxd.implementation_pub_date ,
             '实施公告',
@@ -278,7 +278,7 @@ def check_1_xrxd(conn, xrxd):
             )
   
     # A股登记日
-    xrxd.md_of_shareholders = check_md_of_spec_day_noparse( conn, 
+    xrxd.md_of_registration  = check_md_of_spec_day_noparse( conn, 
             xrxd.code, 
             xrxd.a_registration_date,
             'A股登记日',
@@ -306,7 +306,7 @@ def generate_xrxd_csv( records, filename ):
     
     header = header + ",A股登记日,送股率,转股率,分红率,登第一交易日,登开盘,登收盘,登昨收,登基准开盘,登基准收盘,登基准昨收"
 
-    header = header + ",分配基盘(万股),送股数(万股),转股数(万股),分红金额(万股),登记日股息率,登记日总市值"
+    header = header + ",分配基盘(万股),送股数(万股),转股数(万股),分红金额(万),登记日股息率,登记日总市值"
 
     with open( fullname, "w")  as f:
         f.write("%s\n" %  header  )

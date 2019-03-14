@@ -4,6 +4,8 @@ import os
 import re
 import sqlite3
 
+import util
+
 WORKING_DIR = "working_dir"
 DB_PATH     = "%s/mf.db" % WORKING_DIR
 
@@ -370,13 +372,13 @@ class XrXdInfo:
 
         #分配基盘(万股)，送股数(万股)，转股数(万股)，分红金额(万股)，登记日股息率，登记日总市值
 
-        s = s + ",%f,%f,%f,%f,%f,%f" % (
-                self.distributed_share_base_implement 
-                ,self.dividend_number 
-                ,self.transfer_number 
-                ,self.bonus_amount_rmb 
-                ,self.distr_r 
-                ,self.market_cap 
+        s = s + ",%s,%s,%s,%s,%s,%s" % (
+                util.nullable_float( self.distributed_share_base_implement)
+                ,util.nullable_float( self.dividend_number )
+                ,util.nullable_float( self.transfer_number )
+                ,util.nullable_float( self.bonus_amount_rmb )
+                ,util.nullable_float( self.distr_r )
+                ,util.nullable_float( self.market_cap) 
                 )
 
         return s

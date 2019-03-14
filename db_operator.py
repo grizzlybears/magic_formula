@@ -1293,6 +1293,8 @@ order by x.code, x.report_date
 
         #分配基盘(万股)
         tr.distributed_share_base_implement = row[12]
+        #print "分配基盘(万股)" , tr.distributed_share_base_implement
+        
         #送股数(万股) 
         tr.dividend_number = row[13]
         #转股数  (万股) 

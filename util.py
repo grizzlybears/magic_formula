@@ -180,4 +180,10 @@ def parse_xrxd_note(note):
         #print "无法解析分红文本!"
         return None 
         
+def nullable_float(f):
+    if f:
+        return "%f" % float(f)
+    else:
+        return ''
+
 
