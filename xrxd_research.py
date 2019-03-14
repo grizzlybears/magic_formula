@@ -8,6 +8,8 @@ from datetime import date,datetime,timedelta
 import codecs
 import csv
 import collections
+import io
+import os
 
 # 著名扩展包
 from   sqlalchemy.sql  import select as alch_select
@@ -285,6 +287,33 @@ def check_1_xrxd(conn, xrxd):
             xrxd.bonus_ratio_rmb 
             )
 
+def generate_xrxd_csv( records, filename ):
+    fullname = "%s/%s.csv" % (data_struct.WORKING_DIR, filename)
+    #the_file = io.open( filename, "w", encoding='utf-8')
+    #the_file.close()
+    
+    # 代码，报告期，董事会公告日，董事会方案，董事会公告日行情，
+    #               股东大会公告日，股东大会方案，股东大会公告日行情，
+    #               实施公告日，实施公告方案，实施公告日行情
+    #               A股登记日，登记日行情
+    #分配基盘(万股)，送股数(万股)，转股数(万股)，分红金额(万股)，登记日股息率，登记日总市值
+    #
+    header = "代码,报告期"
+    header = header + ",董事会公告日,董事会方案,董送股率,董转股率,董分红率,董第一交易日,董开盘,董收盘,董昨收,董基准开盘,董基准收盘,董基准昨收"
+    header = header + ",股东大会公告日,股东大会方案,股送股率,股转股率,股分红率,股第一交易日,股开盘,股收盘,股昨收,股基准开盘,股基准收盘,股基准昨收"
+
+    header = header + ",实施公告日,实施方案,实送股率,实转股率,实分红率,实第一交易日,实开盘,实收盘,实昨收,实基准开盘,实基准收盘,实基准昨收"
+    
+    header = header + ",A股登记日,送股率,转股率,分红率,登第一交易日,登开盘,登收盘,登昨收,登基准开盘,登基准收盘,登基准昨收"
+
+    header = header + ",分配基盘(万股),送股数(万股),转股数(万股),分红金额(万股),登记日股息率,登记日总市值"
+
+    with open( fullname, "w")  as f:
+        f.write("%s\n" %  header  )
+
+        for r in records:
+            f.write("%s\n" % r.to_csv_str() )
+ 
 def sum_xrxd(engine, start_year, end_year ):
     start_d = "%s-01-01" % start_year
     end_d   = "%s-12-31" % end_year 
@@ -295,6 +324,7 @@ def sum_xrxd(engine, start_year, end_year ):
     for r in xrxd_records:
         check_1_xrxd( conn, r)
 
+    generate_xrxd_csv( xrxd_records, "xrxd_research" )
 
 def handle_sum_xrxd( argv, argv0 ): 
     try:

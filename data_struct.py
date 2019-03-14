@@ -312,7 +312,6 @@ class XrXdInfo:
     #分红额(万元)  
     bonus_amount_rmb = 0.0
 
-
     # 股息率
     distr_r = 0.0
 
@@ -331,6 +330,56 @@ class XrXdInfo:
     #A股登记日行情
     md_of_registration  = None
 
+    # 代码，报告期，董事会公告日，董事会方案，董事会公告日行情，
+    #               股东大会公告日，股东大会方案，股东大会公告日行情，
+    #               实施公告日，实施公告方案，实施公告日行情
+    #               A股登记日，登记日行情
+    #分配基盘(万股)，送股数(万股)，转股数(万股)，分红金额(万股)，登记日股息率，登记日总市值
+    #                
+    def to_csv_str(self):
+        s = ''
+        s = s + "%s,%s" % (self.code, self.report_date)
+
+    #   董事会公告日，董事会方案，董事会公告日行情，
+        s = s + ",%s,%s" % (self.board_plan_pub_date, self.board_plan_bonusnote ) 
+        if self.md_of_board is not None:
+            s = s + self.md_of_board.to_csv_str_headcomma()
+        else:
+            s = s + XrXdCheckInfo.blank_csv_headcomma()
+ 
+    #               股东大会公告日，股东大会方案，股东大会公告日行情，
+        s = s + ",%s,%s" % (self.shareholders_plan_pub_date, self.shareholders_plan_bonusnote) 
+        if  self.md_of_shareholders is not None:
+            s = s +  self.md_of_shareholders.to_csv_str_headcomma()
+        else:
+            s = s + XrXdCheckInfo.blank_csv_headcomma()
+
+    #               实施公告日，实施公告方案，实施公告日行情
+        s = s + ",%s,%s" % (self.implementation_pub_date, self.implementation_bonusnote) 
+        if  self.md_of_implementation is not None:
+            s = s +  self.md_of_implementation.to_csv_str_headcomma()
+        else:
+            s = s + XrXdCheckInfo.blank_csv_headcomma()
+
+    #               A股登记日，登记日行情
+        s = s + ",%s" % (self.a_registration_date) 
+        if  self.md_of_registration is not None:
+            s = s +  self.md_of_registration.to_csv_str_headcomma()
+        else:
+            s = s + XrXdCheckInfo.blank_csv_headcomma()
+
+        #分配基盘(万股)，送股数(万股)，转股数(万股)，分红金额(万股)，登记日股息率，登记日总市值
+
+        s = s + ",%f,%f,%f,%f,%f,%f" % (
+                self.distributed_share_base_implement 
+                ,self.dividend_number 
+                ,self.transfer_number 
+                ,self.bonus_amount_rmb 
+                ,self.distr_r 
+                ,self.market_cap 
+                )
+
+        return s
 
 class XrXdCheckInfo: 
     # 调研日，一般是 董事会公告日/股东大会公告日/实施公告日/登记日 之一
@@ -357,5 +406,34 @@ class XrXdCheckInfo:
     b_open = 0.0
     b_close = 0.0
     b_pre_close = 0.0
+    
+    @staticmethod
+    def blank_csv_headcomma():
+        return ',,,,,,,,,,'
 
-   
+    # ，送股率，转股率，分红率，第一交易日，开盘，收盘，昨收，基准开盘，基准收盘，基准昨收
+    def to_csv_str_headcomma(self):
+        s =''
+        if self.dividend_ratio:
+            s = s + ',%f' % self.dividend_ratio 
+        else:
+            s = s + ','
+
+        if self.transfer_ratio:
+            s = s + ',%f' % self.transfer_ratio 
+        else:
+            s = s + ','
+
+        if self.bonus_ratio_rmb:
+            s = s + ',%f' % self.bonus_ratio_rmb
+        else:
+            s = s + ','
+
+        if self.t_day == '':
+            s = s + ',,,,,,,'
+        else:
+            s = s + ',%s' % self.t_day 
+            s = s + ',%f,%f,%f' % (self.p_open, self.p_close, self.p_pre_close)
+            s = s + ',%f,%f,%f' % (self.b_open, self.b_close, self.b_pre_close)
+     
+        return s
