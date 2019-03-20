@@ -364,4 +364,31 @@ def get_XrXd_by_year( year ):
 
     return df
 
+# 获得指定报告年度的预告记录
+def get_forcast_by_year( year ):
+
+    start_d = '%d-01-01' % year
+    end_d   = '%d-01-01' % (year +1)
+
+
+    q = jq.query(
+                jq.finance.STK_FIN_FORCAST  
+            ).filter(
+                jq.finance.STK_FIN_FORCAST.end_date >= start_d
+                ,jq.finance.STK_FIN_FORCAST.end_date <  end_d 
+            ).order_by (
+                jq.finance.STK_FIN_FORCAST.code
+                ,jq.finance.STK_FIN_FORCAST.end_date
+                ,jq.finance.STK_FIN_FORCAST.report_type_id
+            )
+    # 返回一个 dataframe， 每一行对应数据表中的一条数据， 列索引是你所查询的字段名称
+    df=jq.finance.run_query(q)
+ 
+    row_count = len(df.index)
+    if row_count < 1:
+        print "WARN!!! 未获得%d报告年度的预告数据" %  year
+        return None
+
+    return df
+
 

@@ -1150,6 +1150,25 @@ def test_parsing_xrxd():
     a = util.parse_xrxd_note("10送0.43913股派0.0488元(含税)")
     a = util.parse_xrxd_note("10送aaaa股派bbbb元(含税)")
 
+    conn = engine.connect()
+    xrxd_records = db_operator.db_fetch_xrxd( conn, '2005-01-01', '2018-01-01')
+
+    for r in xrxd_records:
+        #print r.code, r.report_date 
+        if r.board_plan_bonusnote:
+            p = util.parse_xrxd_note(r.board_plan_bonusnote )
+            if p is None :
+                print "WARN: 无法解析 %s 报告期%s 的董事会预告方案 -- %s" % (r.code, r.report_date,r.board_plan_bonusnote  )
+
+        if r.shareholders_plan_bonusnote:
+            p = util.parse_xrxd_note(r.shareholders_plan_bonusnote )
+            if  p is None :
+                print "WARN: 无法解析 %s 报告期%s 的股东大会预告方案 -- %s" % (r.code, r.report_date,r.shareholders_plan_bonusnote )
+
+        if r.shareholders_plan_bonusnote:
+            p = util.parse_xrxd_note(r.implementation_bonusnote )
+            if   p is None :
+                print "WARN: 无法解析 %s 报告期%s 的实施方案 -- %s" % (r.code, r.report_date,r.implementation_bonusnote )
 
 
 
@@ -1174,27 +1193,11 @@ def do_some_experiment(engine):
     
     #test_parsing_xrxd()
 
-    conn = engine.connect()
-    xrxd_records = db_operator.db_fetch_xrxd( conn, '2005-01-01', '2018-01-01')
+    df = data_fetcher.get_forcast_by_year( 2017)  
+    #util.print_df_all(df)
+    db_operator.save_forcast_df_to_db( engine, df)
 
-    for r in xrxd_records:
-        #print r.code, r.report_date 
-        if r.board_plan_bonusnote:
-            p = util.parse_xrxd_note(r.board_plan_bonusnote )
-            if p is None :
-                print "WARN: 无法解析 %s 报告期%s 的董事会预告方案 -- %s" % (r.code, r.report_date,r.board_plan_bonusnote  )
-
-        if r.shareholders_plan_bonusnote:
-            p = util.parse_xrxd_note(r.shareholders_plan_bonusnote )
-            if  p is None :
-                print "WARN: 无法解析 %s 报告期%s 的股东大会预告方案 -- %s" % (r.code, r.report_date,r.shareholders_plan_bonusnote )
-
-        if r.shareholders_plan_bonusnote:
-            p = util.parse_xrxd_note(r.implementation_bonusnote )
-            if   p is None :
-                print "WARN: 无法解析 %s 报告期%s 的实施方案 -- %s" % (r.code, r.report_date,r.implementation_bonusnote )
-
-
+   
     pass
     
     

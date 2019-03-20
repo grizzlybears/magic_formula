@@ -64,6 +64,33 @@ CREATE TABLE IF NOT EXISTS "Valuation" (
     
     conn.execute( sql) 
 
+def create_forcast_table(conn):
+    sql= '''
+CREATE TABLE IF NOT EXISTS "Forcast" (
+    id BIGINT, 
+    code TEXT, 
+    company_id   int,
+    name TEXT,
+    end_date  TEXT,
+    report_type_id   int,
+    report_type  TEXT,
+    pub_date TEXT,
+    type_id int,
+    type    TEXT,
+    profit_min float,
+    profit_max float,
+    profit_last float,
+    profit_ratio_min float,
+    profit_ratio_max float,
+    board_plan_pub_date  TEXT,
+    board_plan_bonusnote TEXT,
+    content    TEXT,
+
+    PRIMARY KEY( id)
+    );
+    '''
+    conn.execute( sql) 
+
 
 # report_date  一般为：一季报:YYYY-03-31;中报:YYYY-06-30;三季报:YYYY-09-30;年报:YYYY-12-31同时也可能存在其他日期
 def create_XrXd_table(conn):
@@ -416,6 +443,8 @@ def get_db_conn():
 
     create_XrXd_table(conn)
 
+    create_forcast_table(conn)
+
     conn.commit()
 
     return conn 
@@ -449,7 +478,13 @@ def save_XrXd_df_to_db(engine, df):
 
     a.to_sql( 'XrXd', con = engine , index=False, if_exists='append')
 
-  
+def save_forcast_df_to_db(engine, df):
+
+    a = nr.clean_df_db_dups(df ,'Forcast', engine, ['id'] ) 
+
+    a.to_sql( 'Forcast', con = engine , index=False, if_exists='append')
+
+ 
 def save_balance_df_to_db(engine, dataframe ):
     #pd.set_option('display.max_columns', 200)
 
