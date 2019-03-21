@@ -101,6 +101,12 @@ def main():
         return xrxd_research. handle_fetch_xrxd( sys.argv[2:], MY_NAME )
     elif ('sum_xrxd' == sub_command ):  # 汇总除权除息日的行情    sum_xrxd [startyear] [endyear]
         return xrxd_research.handle_sum_xrxd( sys.argv[2:], MY_NAME )
+    
+    elif ('fetch_forcast' == sub_command ):  # 下载预告数据    fetch_forcast [startyear] [endyear]
+        return xrxd_research. handle_fetch_forcast( sys.argv[2:], MY_NAME )
+    elif ('sum_forcast' == sub_command ):  # 汇总预告后的行情    sum_forcast [startyear] [endyear]
+        return xrxd_research.handle_sum_forcast( sys.argv[2:], MY_NAME )
+ 
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()

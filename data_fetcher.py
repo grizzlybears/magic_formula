@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-
+import sys
+import site
+import traceback
 
 import  jqdatasdk as jq
 import  pandas as pd
@@ -138,7 +140,10 @@ def get_daily_line_n(sec_code , t_start, howmany ):
     dt_end   = t_start + dt_delta
 
     #print "    fetch daily line of %s, %s ~ %s" % ( sec_code, t_start, t_end  )
-    df = jq.get_price(sec_code
+    
+    try:
+
+        df = jq.get_price(sec_code
             , start_date = t_start, end_date = dt_end
             , frequency='daily'
                #  默认是None(表示[‘open’, ‘close’, ‘high’, ‘low’, ‘volume’, ‘money’]这几个标准字段)
@@ -146,6 +151,16 @@ def get_daily_line_n(sec_code , t_start, howmany ):
             , skip_paused=True
             , fq='pre'
             )
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+
+        emsg = str(e)
+        if  '找不到标的' in emsg:
+            return None
+        else:
+            raise e
 
     # 只要前 howmany 行
     return df.iloc[ 0: howmany - 1 ]
