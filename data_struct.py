@@ -342,7 +342,7 @@ class XrXdInfo:
         s = ''
         s = s + "%s,%s" % (self.code, self.report_date)
 
-    #   董事会公告日，董事会方案，董事会公告日行情，
+    #   董事会公告日，董事会方案，董事会公告日行情(带5日，10日，20日)，
         s = s + ",%s,%s" % (self.board_plan_pub_date, self.board_plan_bonusnote ) 
         if self.md_of_board is not None:
             s = s + self.md_of_board.to_csv_str_headcomma()
@@ -352,18 +352,18 @@ class XrXdInfo:
     #               股东大会公告日，股东大会方案，股东大会公告日行情，
         s = s + ",%s,%s" % (self.shareholders_plan_pub_date, self.shareholders_plan_bonusnote) 
         if  self.md_of_shareholders is not None:
-            s = s +  self.md_of_shareholders.to_csv_str_headcomma()
+            s = s +  self.md_of_shareholders.to_csv_str_headcomma_md1()
         else:
             s = s + XrXdCheckInfo.blank_csv_headcomma()
 
     #               实施公告日，实施公告方案，实施公告日行情
         s = s + ",%s,%s" % (self.implementation_pub_date, self.implementation_bonusnote) 
         if  self.md_of_implementation is not None:
-            s = s +  self.md_of_implementation.to_csv_str_headcomma()
+            s = s +  self.md_of_implementation.to_csv_str_headcomma_md1()
         else:
             s = s + XrXdCheckInfo.blank_csv_headcomma()
 
-    #               A股登记日，登记日行情
+    #               A股登记日，登记日行情(带5日，10日，20日)
         s = s + ",%s" % (self.a_registration_date) 
         if  self.md_of_registration is not None:
             s = s +  self.md_of_registration.to_csv_str_headcomma()
@@ -403,18 +403,63 @@ class XrXdCheckInfo:
     p_open  = 0.0
     p_close = 0.0
     p_pre_close = 0.0
+    p_pre_close_nonrestore = 0.0
 
     #同日比较标准的行情
     b_open = 0.0
     b_close = 0.0
     b_pre_close = 0.0
+
+    #更多行情比较
+    #[
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    ...
+    #]
+    more_md = []
     
+    def __init__(self):
+        self.check_date = ''
+
+        self.check_reason = ''
+        self.t_day  = ''
+        self.more_md = []
+
     @staticmethod
     def blank_csv_headcomma():
         return ',,,,,,,,,,'
 
-    # ，送股率，转股率，分红率，第一交易日，开盘，收盘，昨收，基准开盘，基准收盘，基准昨收
+    # , 送股率，转股率，分红率，第一交易日，开盘，收盘，昨收，不复权昨收, 基准开盘，基准收盘，基准昨收
+    # , 第五交易日，收盘，基准收盘
+    # , 第十交易日，收盘，基准收盘
+    # , 第二十交易日，收盘，基准收盘
     def to_csv_str_headcomma(self):
+    
+        s =self.to_csv_str_headcomma_md1()
+       
+        if len(self.more_md) >=1:
+            #有第五日
+            s = s + ',%s,%f,%f' % (self.more_md[0][1],self.more_md[0][2], self.more_md[0][3])
+        else:
+            s = s + ',,,'
+
+        if len(self.more_md) >=2:
+            #有第10日
+            s = s + ',%s,%f,%f' % (self.more_md[1][1],self.more_md[1][2], self.more_md[1][3])
+        else:
+            s = s + ',,,'
+
+        if len(self.more_md) >=3:
+            #有第20日
+            s = s + ',%s,%f,%f' % (self.more_md[2][1],self.more_md[2][2], self.more_md[2][3])
+        else:
+            s = s + ',,,'
+
+
+        return s
+    
+    # , 送股率，转股率，分红率，第一交易日，开盘，收盘，昨收，不复权昨收, 基准开盘，基准收盘，基准昨收
+    def to_csv_str_headcomma_md1(self):
         s =''
         if self.dividend_ratio:
             s = s + ',%f' % self.dividend_ratio 
@@ -432,10 +477,10 @@ class XrXdCheckInfo:
             s = s + ','
 
         if self.t_day == '':
-            s = s + ',,,,,,,'
+            s = s + ',,,,,,,,'
         else:
             s = s + ',%s' % self.t_day 
-            s = s + ',%f,%f,%f' % (self.p_open, self.p_close, self.p_pre_close)
+            s = s + ',%f,%f,%f,%f' % (self.p_open, self.p_close, self.p_pre_close, self.p_pre_close_nonrestore)
             s = s + ',%f,%f,%f' % (self.b_open, self.b_close, self.b_pre_close)
      
         return s

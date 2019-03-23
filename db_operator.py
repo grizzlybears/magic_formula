@@ -1045,6 +1045,30 @@ limit 3
 
     return r[0]
 
+# 返回数组:
+#[
+#    [交易日, 收盘价，开盘价，前日收盘价,  前复权因子],
+#    [交易日, 收盘价，开盘价，前日收盘价,  前复权因子],
+#    ...
+#]
+def query_first_n_dailyline(conn, from_day, code, num):
+    s = '''
+select t_day, close, open, pre_close, factor 
+from DailyLine
+where 
+    t_day >=  '%s' and code='%s' 
+    and paused = 0
+order by t_day
+limit %d
+            '''  % ( from_day,code, num )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    if 0 == len(r):
+        return None
+
+    return r
+
 
 # 返回数组
 #     T_day1,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }

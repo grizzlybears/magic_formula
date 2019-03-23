@@ -31,7 +31,7 @@ import make_indices
 BASE_CODE = '000300.XSHG'    
 BASE_NAME = '沪深300'
 
-HOWLONG_FROM_PUB_DAY = 3
+HOWLONG_FROM_PUB_DAY = 22
 
 
 def fetch_md_of_register_day(engine, code, register_day, memo):
@@ -174,6 +174,44 @@ def fetch_md_of_spec_day(conn, code , from_day ):
 
     return target_md
 
+# 获取自day日(含)起前N天的行情
+def fetch_md_from_spec_day(conn, code , from_day,num ):
+    
+# 返回数组:
+#[
+#    [交易日, 收盘价，开盘价，前日收盘价,  前复权因子],
+#    [交易日, 收盘价，开盘价，前日收盘价,  前复权因子],
+#    ...
+#]
+    target_md = db_operator.query_first_n_dailyline(conn, from_day, code, num)
+    if target_md is None:
+        return None
+
+    t_day = target_md[0][0]
+    dt_t_day = datetime.strptime(t_day,'%Y-%m-%d').date()
+    dt_from_day = datetime.strptime(from_day,'%Y-%m-%d').date()
+
+    day_delta = dt_t_day.toordinal() -  dt_from_day.toordinal()
+    if day_delta > 5:
+        print "WARN! %s自%s始第一个交易日是%s，相距过大，不能采纳。" % (code, from_day, t_day  )
+        return None
+
+    return target_md
+
+def append_Nth_md_compare(to_append, Nth, md_target,md_base ):
+#    [第几天,t_day,标的收盘,基准收盘 ]
+    if len(md_target) >= Nth :
+        
+        # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
+        md = [Nth, md_target[Nth-1][0], md_target[Nth-1][1], md_base[Nth-1][1]  ]
+        to_append.append( md )
+        #print md
+        return 1
+
+    return 0
+
+
+
 def check_md_of_spec_day(conn, code, spec_day, day_type, xrxd_note):
     
     checkinfo = data_struct.XrXdCheckInfo()
@@ -191,27 +229,45 @@ def check_md_of_spec_day(conn, code, spec_day, day_type, xrxd_note):
 
     # 抓取标的公告后行情
     # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
-    md  = fetch_md_of_spec_day( conn, code, spec_day)
-    if md is None:
+    md_target  = fetch_md_from_spec_day( conn, code, spec_day, 20)
+    if md_target is None:
         print "WARN! 无法获得%s 于%s(%s)的行情" % (code, spec_day, day_type  )
         return checkinfo
    
-    checkinfo.t_day = md[0]
-    checkinfo.p_close =  md[1] / md[4]
-    checkinfo.p_open  =  md[2] / md[4]
-    checkinfo.p_pre_close   =  md[3] / md[4]
+    checkinfo.t_day = md_target[0][0]
+    checkinfo.p_close =  md_target[0][1] 
+    checkinfo.p_open  =  md_target[0][2] 
+    checkinfo.p_pre_close   =  md_target[0][3] 
+    checkinfo.p_pre_close_nonrestore = md_target[0][3] / md_target[0][4] 
+
  
     # 抓取基准公告后行情
     # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
-    md  = fetch_md_of_spec_day( conn, BASE_CODE, checkinfo.t_day )
-    if md is None:
+    md_base  = fetch_md_from_spec_day( conn, BASE_CODE, checkinfo.t_day, 20 )
+    if md_base is None:
         print "WARN! 无法获得%s 于%s(%s %s)的行情" % (BASE_NAME , checkinfo.t_day, code, day_type  )
         return checkinfo
   
-    checkinfo.b_close =  md[1]  # 基准是指数，无关复权
-    checkinfo.b_open  =  md[2] 
-    checkinfo.b_pre_close   =  md[3] 
+    checkinfo.b_close =  md_base[0][1]  # 基准是指数，无关复权
+    checkinfo.b_open  =  md_base[0][2] 
+    checkinfo.b_pre_close   =  md_base[0][3] 
  
+    #更多行情比较
+    #[
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    ...
+    #]
+    #补充第五天，第十天，第二十天的行情对比
+    if not append_Nth_md_compare(checkinfo.more_md  , 5  , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第五天的行情" % (code, spec_day, day_type  )
+    
+    if not append_Nth_md_compare(checkinfo.more_md  , 10 , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第十天的行情" % (code, spec_day, day_type  )
+    
+    if not append_Nth_md_compare(checkinfo.more_md  , 20 , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第二十天的行情" % (code, spec_day, day_type  )
+  
     return checkinfo
 
 def check_md_of_spec_day_noparse(conn, code, spec_day, day_type,div,trans, bonus):
@@ -226,27 +282,55 @@ def check_md_of_spec_day_noparse(conn, code, spec_day, day_type,div,trans, bonus
 
     # 抓取标的公告后行情
     # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
-    md  = fetch_md_of_spec_day( conn, code, spec_day)
-    if md is None:
+    md_target  = fetch_md_from_spec_day( conn, code, spec_day, 20)
+    if md_target is None:
         print "WARN! 无法获得%s 于%s(%s)的行情" % (code, spec_day, day_type  )
         return checkinfo
+    #print "%s 于%s(%s)的行情:" % (code, spec_day, day_type  )
+    #print md_target
+    #print
    
-    checkinfo.t_day = md[0]
-    checkinfo.p_close =  md[1] / md[4]
-    checkinfo.p_open  =  md[2] / md[4]
-    checkinfo.p_pre_close   =  md[3] / md[4]
+    checkinfo.t_day = md_target[0][0]
+    checkinfo.p_close =  md_target[0][1] 
+    checkinfo.p_open  =  md_target[0][2] 
+    checkinfo.p_pre_close   =  md_target[0][3] 
+    checkinfo.p_pre_close_nonrestore = md_target[0][3] / md_target[0][4] 
+
  
     # 抓取基准公告后行情
     # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
-    md  = fetch_md_of_spec_day( conn, BASE_CODE, checkinfo.t_day )
-    if md is None:
+    md_base  = fetch_md_from_spec_day( conn, BASE_CODE, checkinfo.t_day, 20 )
+    if md_base is None:
         print "WARN! 无法获得%s 于%s(%s %s)的行情" % (BASE_NAME , checkinfo.t_day, code, day_type  )
         return checkinfo
-  
-    checkinfo.b_close =  md[1]  # 基准是指数，无关复权
-    checkinfo.b_open  =  md[2] 
-    checkinfo.b_pre_close   =  md[3] 
+    #print "%s 于%s(%s)的行情:" % ( BASE_NAME, spec_day, day_type  )
+    #print md_base
+    #print
+   
+
+    checkinfo.b_close =  md_base[0][1]  # 基准是指数，无关复权
+    checkinfo.b_open  =  md_base[0][2] 
+    checkinfo.b_pre_close   =  md_base[0][3] 
  
+    #更多行情比较
+    #[
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    ...
+    #]
+    #补充第五天，第十天，第二十天的行情对比
+    if not append_Nth_md_compare(checkinfo.more_md  , 5  , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第五天的行情" % (code, spec_day, day_type  )
+    
+    if not append_Nth_md_compare(checkinfo.more_md  , 10 , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第十天的行情" % (code, spec_day, day_type  )
+    
+    if not append_Nth_md_compare(checkinfo.more_md  , 20 , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第二十天的行情" % (code, spec_day, day_type  )
+  
+    #print "%s 于%s(%s)起的行情" % (code, spec_day, day_type  ) , checkinfo.to_csv_str_headcomma()
+    #print checkinfo.more_md
+
     return checkinfo
 
 
@@ -299,13 +383,16 @@ def generate_xrxd_csv( records, filename ):
     #分配基盘(万股)，送股数(万股)，转股数(万股)，分红金额(万股)，登记日股息率，登记日总市值
     #
     header = "代码,报告期"
-    header = header + ",董事会公告日,董事会方案,董送股率,董转股率,董分红率,董第一交易日,董开盘,董收盘,董昨收,董基准开盘,董基准收盘,董基准昨收"
-    header = header + ",股东大会公告日,股东大会方案,股送股率,股转股率,股分红率,股第一交易日,股开盘,股收盘,股昨收,股基准开盘,股基准收盘,股基准昨收"
-
-    header = header + ",实施公告日,实施方案,实送股率,实转股率,实分红率,实第一交易日,实开盘,实收盘,实昨收,实基准开盘,实基准收盘,实基准昨收"
+    header = header + ",董事会公告日,董事会方案,董送股率,董转股率,董分红率,董第一交易日,董开盘,董收盘,董昨收,董昨收不复权, 董基准开盘,董基准收盘,董基准昨收"
+    header = header + ",董第五日,董收盘5,董基准收盘5,董第十日,董收盘10,董基准收盘10,董第二十日,董收盘20,董基准收盘20"
     
-    header = header + ",A股登记日,送股率,转股率,分红率,登第一交易日,登开盘,登收盘,登昨收,登基准开盘,登基准收盘,登基准昨收"
-
+    header = header + ",股东大会公告日,股东大会方案,股送股率,股转股率,股分红率,股第一交易日,股开盘,股收盘,股昨收,股昨收不复权,股基准开盘,股基准收盘,股基准昨收"
+    
+    header = header + ",实施公告日,实施方案,实送股率,实转股率,实分红率,实第一交易日,实开盘,实收盘,实昨收,实昨收不复权,实基准开盘,实基准收盘,实基准昨收"
+    
+    header = header + ",A股登记日,送股率,转股率,分红率,登第一交易日,登开盘,登收盘,登昨收,登昨收不复权,登基准开盘,登基准收盘,登基准昨收"
+    header = header + ",登第五日,登收盘5,登基准收盘5,登第十日,登收盘10,登基准收盘10,登第二十日,登收盘20,登基准收盘20"
+    
     header = header + ",分配基盘(万股),送股数(万股),转股数(万股),分红金额(万),登记日股息率,登记日总市值"
 
     with open( fullname, "w")  as f:
@@ -359,12 +446,62 @@ def handle_sum_xrxd( argv, argv0 ):
     except  Exception as e:
         (t, v, bt) = sys.exc_info()
         traceback.print_exception(t, v, bt)
-        print
-        print e
         return 1 
     finally:
         pass
 
+
+    return 0
+
+def sum_xrxd2(engine, start_year, end_year ):
+    start_d = "%s-01-01" % start_year
+    end_d   = "%s-12-31" % end_year 
+
+    conn = engine.connect()
+    xrxd_records = db_operator.db_fetch_xrxd( conn, start_d, end_d)
+
+    for r in xrxd_records:
+        check_1_xrxd( conn, r)
+
+    generate_xrxd_csv( xrxd_records, "xrxd_research" )
+
+
+def handle_sum_xrxd2( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005
+
+        i = len(argv)
+        now = datetime.now()
+        end_year = now.year 
+
+        if ( 0== i  ):
+            start_year = now.year - 1
+        else:
+            start_year = int(argv[0])
+            
+            if ( i >= 2 ):
+                end_year  = int(argv[1])
+
+        # JQ的数据从2005开始
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        sum_xrxd2(engine, start_year, end_year )
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        return 1 
+    finally:
+        pass
 
     return 0
 
@@ -432,7 +569,7 @@ def fetch_1_year_forcast(engine, year ):
     df = data_fetcher.get_forcast_by_year( year )  
     db_operator.save_forcast_df_to_db( engine, df)
 
-    # 逐条除权除息数据去抓目标股票的登记日(以及次日)市值/行情
+    # 逐条业绩预告数据去抓目标股票预告公布日市值, 以及之后一段期间的行情
     row_num = len(df.index)
     #n = 0
     for i in range(row_num):
