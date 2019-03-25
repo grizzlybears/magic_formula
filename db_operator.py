@@ -1372,4 +1372,69 @@ order by x.code, x.report_date
 
     return tr_list
 
+# 返回数组:
+def db_fetch_forcast(conn, start_d, end_d  ):
+    s = '''
+select code,  end_date, report_type_id, report_type, pub_date,
+       type_id,  type, profit_min, profit_max, profit_last,
+       profit_ratio_min, profit_ratio_max, content
+from Forcast x
+where
+    x.end_date >= '%s' and x.end_date <= '%s'
+order by x.code, x.end_date
+            '''  % ( start_d , end_d )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    tr_list = []
+
+    for row in r:
+        tr = data_struct.ForcastInfo()
+
+        #代码
+        tr.code = row[0]
+
+        #报告期
+        tr.end_date = row[1]
+
+        #预告期类型编码:  304001 一季度预告,  304002  中报预告, 304003  三季度预告,  304004  四季度预告
+        tr.report_type_id = row[2]
+    
+        #预告期类型
+        tr.report_type  = row[3]
+
+        # 公布日期
+        tr.pub_date = row[4]
+
+    #预告类型编码: 305001   业绩大幅上升, 305002  业绩预增, 305003  业绩预盈, 305004  预计扭亏
+    #              305005  业绩持平,  305006  无大幅变动
+    #              305007  业绩预亏,  305008  业绩大幅下降, 305009  大幅减亏, 305010  业绩预降, 305011  预计减亏
+    #              305012  不确定,  305013  取消预测
+        tr.type_id = row[5]
+
+        #预告类型
+        tr.forcast_type  = row[6]
+    
+        #预告净利润（下限）
+        tr.profit_min = row[7]
+    
+        #预告净利润（上限）
+        tr.profit_max = row[8]
+    
+        #去年同期净利润
+        tr.profit_last = row[9]
+
+        #预告净利润变动幅度(下限) 单位：%
+        tr.profit_ratio_min = row[10]
+
+        #预告净利润变动幅度(上限) 单位：%
+        tr.profit_ratio_max = row[11]
+ 
+        #预告内容
+        tr.content    = row[12]
+           
+        tr_list.append(tr)
+
+    return tr_list
+
 

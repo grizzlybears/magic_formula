@@ -484,3 +484,66 @@ class XrXdCheckInfo:
             s = s + ',%f,%f,%f' % (self.b_open, self.b_close, self.b_pre_close)
      
         return s
+
+class ForcastInfo:
+    #代码
+    code = ''
+
+    #报告期
+    end_date = ''
+
+    #预告期类型编码:  304001 一季度预告,  304002  中报预告, 304003  三季度预告,  304004  四季度预告
+    report_type_id = 0
+    
+    #预告期类型
+    report_type  = ''
+
+    # 公布日期
+    pub_date = ''
+
+    #预告类型编码: 305001   业绩大幅上升, 305002  业绩预增, 305003  业绩预盈, 305004  预计扭亏
+    #              305005  业绩持平,  305006  无大幅变动
+    #              305007  业绩预亏,  305008  业绩大幅下降, 305009  大幅减亏, 305010  业绩预降, 305011  预计减亏
+    #              305012  不确定,  305013  取消预测
+    type_id = 0
+
+    #预告类型
+    forcast_type  = ''    # DB字段是 'type'
+    
+    #预告净利润（下限）
+    profit_min = 0.0 
+    
+    #预告净利润（上限）
+    profit_max = 0.0
+    
+    #去年同期净利润
+    profit_last = 0.0
+
+    #预告净利润变动幅度(下限) 单位：%
+    profit_ratio_min = 0.0
+
+    #预告净利润变动幅度(上限) 单位：%
+    profit_ratio_max = 0.0
+ 
+    #预告内容
+    content    = ''
+
+    # (文档里未说明，实际数据中为空) 
+    #board_plan_pub_date  = ''
+    
+    # (文档里未说明，实际数据中为空)
+    #board_plan_bonusnote = ''
+    
+    # 公告后行情
+    #[
+    #    [第几天,t_day,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 ]
+    #    [第几天,t_day,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 ]
+    #    ...
+    #]
+    md_from_pub = []
+
+    def __init__(self):
+        self.md_from_pub = []
+
+
+   

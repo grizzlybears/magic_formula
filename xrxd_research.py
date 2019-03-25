@@ -31,8 +31,11 @@ import make_indices
 BASE_CODE = '000300.XSHG'    
 BASE_NAME = '沪深300'
 
+#公号日起(含)，抓多少天的行情(跳过停牌)
 HOWLONG_FROM_PUB_DAY = 22
 
+#公号日起(含)第一个交易日距离公告日天数的最大值。超过这个值，则恐怕除公告以外影响价格的因素过多，不采纳该条记录
+DAY_DELTA_MAX = 5
 
 def fetch_md_of_register_day(engine, code, register_day, memo):
     print "下载%s的%s(%s)行情" % (code, memo, register_day)
@@ -192,7 +195,7 @@ def fetch_md_from_spec_day(conn, code , from_day,num ):
     dt_from_day = datetime.strptime(from_day,'%Y-%m-%d').date()
 
     day_delta = dt_t_day.toordinal() -  dt_from_day.toordinal()
-    if day_delta > 5:
+    if day_delta > DAY_DELTA_MAX:
         print "WARN! %s自%s始第一个交易日是%s，相距过大，不能采纳。" % (code, from_day, t_day  )
         return None
 
@@ -591,4 +594,113 @@ def fetch_1_year_forcast(engine, year ):
     # 比较基准 
     fetch_1_year_base(engine, year)
     
+def handle_sum_forcast( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005
+
+        i = len(argv)
+        now = datetime.now()
+        end_year = now.year 
+
+        if ( 0== i  ):
+            start_year = now.year - 1
+        else:
+            start_year = int(argv[0])
+            
+            if ( i >= 2 ):
+                end_year  = int(argv[1])
+
+        # JQ的数据从2005开始
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        sum_forcast(engine, start_year, end_year )
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        return 1 
+    finally:
+        pass
+
+    return 0
+
+def sum_forcast(engine, start_year, end_year ):
+    start_d = "%s-01-01" % start_year
+    end_d   = "%s-12-31" % end_year 
+
+    conn = engine.connect()
+    forcast_records = db_operator.db_fetch_forcast( conn, start_d, end_d)
+
+    for r in forcast_records:
+        check_1_forcast( conn, r)
+
+    #generate_forcast_csv( forcast_records, "forcast_research" )
+
+def check_1_forcast(conn, forcast):
+ 
+    spec_day = forcast.pub_date 
+    day_type = "业绩预告公告日"
+    
+    # 抓取标的公告后行情
+    # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
+    md_target  = fetch_md_from_spec_day( conn, forcast.code, spec_day, 20)
+    if md_target is None:
+        print "WARN! 无法获得%s 于%s(%s)的行情" % (forcast.code, spec_day,  day_type )
+        return 
+   
+
+    first_t_day = md_target[0][0]
+ 
+    # 抓取基准公告后行情
+    # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
+    md_base  = fetch_md_from_spec_day( conn, BASE_CODE, first_t_day , 20 )
+    if md_base is None:
+        print "WARN! 无法获得%s 于%s(%s %s)的行情" % (BASE_NAME, first_t_day, forcast.code, day_type)
+        return 
+  
+ 
+    #行情比较
+    #[
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    [第几天,t_day,标的收盘,基准收盘 ]
+    #    ...
+    #]
+    #第一天，第五天，第十天，第二十天的行情对比
+    if not append_Nth_md_compare2( forcast.md_from_pub , 1  , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第一天的行情" % (forcast.code, spec_day, day_type  )
+    
+    if not append_Nth_md_compare2( forcast.md_from_pub , 5  , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第五天的行情" % (forcast.code, spec_day, day_type  )
+    
+    if not append_Nth_md_compare2( forcast.md_from_pub , 10 , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第十天的行情" % (forcast.code, spec_day, day_type  )
+    
+    if not append_Nth_md_compare2( forcast.md_from_pub , 20 , md_target,md_base ):
+        print "WARN! 无法获得%s 于%s(%s)起，第二十天的行情" % (forcast.code, spec_day, day_type  )
+  
+   
+def append_Nth_md_compare2(to_append, Nth, md_target,md_base ):
+#    [第几天,t_day,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 ]
+    if len(md_target) >= Nth :
+        
+        # [交易日, 收盘价，开盘价，前日收盘价,  前复权因子]
+        md = [Nth, md_target[Nth-1][0]
+                , md_target[Nth-1][2], md_target[Nth-1][1], md_target[Nth-1][3]
+                , md_base[Nth-1][2],   md_base[Nth-1][1],   md_base[Nth-1][3]
+             ]
+        to_append.append( md )
+        #print md
+        return 1
+
+    return 0
+
 
