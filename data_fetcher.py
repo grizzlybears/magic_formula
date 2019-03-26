@@ -364,7 +364,7 @@ def get_XrXd_by_year( year ):
             ).filter(
                 jq.finance.STK_XR_XD.report_date >= start_d
                 ,jq.finance.STK_XR_XD.report_date <  end_d 
-                ,jq.finance.STK_XR_XD.plan_progress_code  == '313002'     # 方案进度编码
+                #,jq.finance.STK_XR_XD.plan_progress_code  == '313002'     # 方案进度编码
             ).order_by (
                 jq.finance.STK_XR_XD.code
                 ,jq.finance.STK_XR_XD.report_date
@@ -379,12 +379,45 @@ def get_XrXd_by_year( year ):
 
     return df
 
+# 获得指定报告年度的分红送转股记录
+# "313001"    "董事会预案"
+# "313002"    "实施方案"
+# "313003"    "股东大会预案"
+# "313004"    "取消分红"
+# "313005"    "公司预案"
+def get_XrXd_by_year2( year, progress_code  ):
+
+    start_d = '%d-01-01' % year
+    end_d   = '%d-01-01' % (year +1)
+
+
+    q = jq.query(
+                jq.finance.STK_XR_XD            
+            ).filter(
+                jq.finance.STK_XR_XD.report_date >= start_d
+                ,jq.finance.STK_XR_XD.report_date <  end_d 
+                ,jq.finance.STK_XR_XD.plan_progress_code  == progress_code   # 方案进度编码
+                ,jq.finance.STK_XR_XD.board_plan_bonusnote  != "不分配不转增"
+            ).order_by (
+                jq.finance.STK_XR_XD.code
+                ,jq.finance.STK_XR_XD.report_date
+            )
+    # 返回一个 dataframe， 每一行对应数据表中的一条数据， 列索引是你所查询的字段名称
+    df=jq.finance.run_query(q)
+ 
+    row_count = len(df.index)
+    if row_count < 1:
+        print "WARN!!! 未获得%d年度的分红除权除息数据" %  year
+        return None
+
+    return df
+
+
 # 获得指定报告年度的预告记录
 def get_forcast_by_year( year ):
 
     start_d = '%d-01-01' % year
     end_d   = '%d-01-01' % (year +1)
-
 
     q = jq.query(
                 jq.finance.STK_FIN_FORCAST  

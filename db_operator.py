@@ -1295,8 +1295,12 @@ order by d.t_day asc, d.code asc
 
 # 返回数组:
 
-def db_fetch_xrxd(conn, start_d, end_d  ):
+def db_fetch_xrxd(conn, start_d, end_d, must_register  ):
     
+    if must_register:
+        join_type = ''
+    else:
+        join_type = 'left'
     s = '''
 select x.code,  x.report_date
     , board_plan_pub_date, board_plan_bonusnote
@@ -1306,12 +1310,12 @@ select x.code,  x.report_date
     , distributed_share_base_implement, dividend_number, transfer_number, bonus_amount_rmb
     , bonus_amount_rmb/10000/v.market_cap as distr_r, v.market_cap
 from XrXd x 
-join Valuation v on (x.code = v.code and x.a_registration_date = v.day )
+%s join Valuation v on (x.code = v.code and x.a_registration_date = v.day )
 where
     x.report_date >= '%s' and x.report_date <= '%s'
 order by x.code, x.report_date
 
-            '''  % ( start_d , end_d )
+            '''  % ( join_type, start_d , end_d )
 
     r = conn.execute( alch_text(s) ).fetchall()
 

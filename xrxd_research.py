@@ -99,7 +99,42 @@ def fetch_1_year_xrxd(engine, year ):
 
     # 比较基准 
     fetch_1_year_base(engine, year)
+ 
+def fetch_1_year_xrxd_b(engine, year ):
+
+    print "下载%d年所有'董事会预告'阶段股票的除权除息数据" % year
+    # 抓除权除息数据
+    df_xrxd = data_fetcher.get_XrXd_by_year2( year, "313001")  
+    if df_xrxd is None:
+        return
+    db_operator.save_XrXd_df_to_db( engine, df_xrxd)
+
+    # 逐条除权除息数据去抓目标股票的登记日(以及次日)市值/行情
+    row_num = len(df_xrxd.index)
+    for i in range(row_num):
+
+        code          = df_xrxd.iloc[i]['code']
+       
+        board_plan_pub_date = df_xrxd.iloc[i]['board_plan_pub_date']
+        if  board_plan_pub_date is None:   
+            print "WARN! %s的董事会公告日登记日为空，略过" % code
+            return 
+        else:
+            fetch_md_of_register_day(engine, code, board_plan_pub_date , '董事会公告日')
+
+        shareholders_plan_pub_date = df_xrxd.iloc[i]['shareholders_plan_pub_date']
+        fetch_md_of_register_day(engine, code, shareholders_plan_pub_date , '股东大会公告日')
+
+        implementation_pub_date = df_xrxd.iloc[i]['implementation_pub_date']
+        fetch_md_of_register_day(engine, code, implementation_pub_date , '实施公告日')
+
+        register_day  = df_xrxd.iloc[i]['a_registration_date']
+        fetch_md_of_register_day(engine, code, register_day, '登记日')
+ 
+    # 比较基准 
+    fetch_1_year_base(engine, year)
     
+   
     
 def fetch_xrxd(engine, start_year, end_year ):
 
@@ -113,6 +148,20 @@ def fetch_xrxd(engine, start_year, end_year ):
         #年度分配是在次年实施的
         last_year = end_year + 1
         fetch_1_year_base(engine, last_year)
+
+def fetch_xrxd_b(engine, start_year, end_year ):
+
+    # 逐年抓除权除息数据
+    for y in range( start_year, end_year  + 1):
+         fetch_1_year_xrxd_b( engine, y)
+
+    # 比较基准行情酌情最后补一年
+    now = datetime.now()
+    if end_year < now.year :
+        #年度分配是在次年实施的
+        last_year = end_year + 1
+        fetch_1_year_base(engine, last_year)
+
 
 # 处理 'fetch_xrxd' 子命令
 def handle_fetch_xrxd( argv, argv0 ): 
@@ -144,7 +193,6 @@ def handle_fetch_xrxd( argv, argv0 ):
             return 1
 
         fetch_xrxd(engine, start_year, end_year )
-        
 
     except  Exception as e:
         (t, v, bt) = sys.exc_info()
@@ -155,6 +203,49 @@ def handle_fetch_xrxd( argv, argv0 ):
     finally:
         pass
 
+
+    return 0
+
+# 处理 'fetch_xrxd_b' 子命令
+def handle_fetch_xrxd_b( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005
+
+        i = len(argv)
+        now = datetime.now()
+        end_year = now.year 
+
+        if ( 0== i  ):
+            start_year = now.year - 1
+        else:
+            start_year = int(argv[0])
+            
+            if ( i >= 2 ):
+                end_year  = int(argv[1])
+
+        # JQ的数据从2005开始
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        fetch_xrxd_b(engine, start_year, end_year )
+        
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
 
     return 0
 
@@ -461,7 +552,7 @@ def sum_xrxd2(engine, start_year, end_year ):
     end_d   = "%s-12-31" % end_year 
 
     conn = engine.connect()
-    xrxd_records = db_operator.db_fetch_xrxd( conn, start_d, end_d)
+    xrxd_records = db_operator.db_fetch_xrxd( conn, start_d, end_d, 0)
 
     for r in xrxd_records:
         check_1_xrxd( conn, r)
