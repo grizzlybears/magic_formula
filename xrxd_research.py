@@ -69,7 +69,10 @@ def fetch_1_year_base(engine, year ):
 
 
 def fetch_1_year_xrxd(engine, year ):
-
+ 
+    # 比较基准 
+    fetch_1_year_base(engine, year)
+ 
     print "下载%d年所有股票的除权除息数据" % year
     # 抓除权除息数据
     df_xrxd = data_fetcher.get_XrXd_by_year( year)  
@@ -97,10 +100,11 @@ def fetch_1_year_xrxd(engine, year ):
         fetch_md_of_register_day(engine, code, implementation_pub_date , '实施公告日')
 
 
+
+def fetch_1_year_xrxd_b(engine, year ):
     # 比较基准 
     fetch_1_year_base(engine, year)
- 
-def fetch_1_year_xrxd_b(engine, year ):
+    
 
     print "下载%d年所有'董事会预告'阶段股票的除权除息数据" % year
     # 抓除权除息数据
@@ -118,7 +122,7 @@ def fetch_1_year_xrxd_b(engine, year ):
         board_plan_pub_date = df_xrxd.iloc[i]['board_plan_pub_date']
         if  board_plan_pub_date is None:   
             print "WARN! %s的董事会公告日登记日为空，略过" % code
-            return 
+            continue
         else:
             fetch_md_of_register_day(engine, code, board_plan_pub_date , '董事会公告日')
 
@@ -131,10 +135,7 @@ def fetch_1_year_xrxd_b(engine, year ):
         register_day  = df_xrxd.iloc[i]['a_registration_date']
         fetch_md_of_register_day(engine, code, register_day, '登记日')
  
-    # 比较基准 
-    fetch_1_year_base(engine, year)
-    
-   
+       
     
 def fetch_xrxd(engine, start_year, end_year ):
 
