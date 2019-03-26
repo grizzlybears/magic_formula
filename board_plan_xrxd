@@ -1,0 +1,8 @@
+#!/bin/bash -e
+
+./mf fetch_xrxd_b 2018
+
+./mf sum_xrxd2
+
+mv working_dir/xrxd_research.csv working_dir/xrxd_research.`date +%F`.csv
+
