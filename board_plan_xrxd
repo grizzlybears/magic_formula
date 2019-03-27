@@ -1,8 +1,26 @@
 #!/bin/bash -e
 
+DB=working_dir/mf.db 
+
+OUT_CSV_BASE=working_dir/xrxd_research
+OUT_CSV=${OUT_CSV_BASE}.csv
+
+OUT_CSV_T_BASE=${OUT_CSV_BASE}.`date +%F`
+
+OUT_CSV_T=${OUT_CSV_T_BASE}.csv
+OUT_CSV_T_GB=${OUT_CSV_T_BASE}.gb.csv
+
+
+rm -f ${DB}
+
 ./mf fetch_xrxd_b 2018
 
 ./mf sum_xrxd2
 
-mv working_dir/xrxd_research.csv working_dir/xrxd_research.`date +%F`.csv
+mv $OUT_CSV $OUT_CSV_T 
+
+iconv -t GBK $OUT_CSV_T > $OUT_CSV_T_GB 
+
+rm  $OUT_CSV_T 
+
 
