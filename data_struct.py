@@ -543,7 +543,71 @@ class ForcastInfo:
     md_from_pub = []
 
     def __init__(self):
+        self.code = ''
+        self.end_date = ''
+        self.report_type_id = 0
+        self.report_type  = ''
+        self.pub_date = ''
+        self.type_id = 0
+        self.forcast_type  = ''    # DB字段是 'type'
+        self.profit_min = 0.0 
+        self.profit_max = 0.0
+        self.profit_last = 0.0
+        self.profit_ratio_min = 0.0
+        self.profit_ratio_max = 0.0
+        self.content    = ''
         self.md_from_pub = []
+    
+    @staticmethod
+    def md_csv_headcomma(md):
+        # csv:    , 公布日起第1天交易日,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 
+        # md:    [ 公布日起第几天,t_day,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 ]
+        s =  ',%s,%f,%f,%f,%f,%f,%f ' % (
+                md[1]
+                ,md[2],md[3],md[4]
+                ,md[5],md[6],md[7]
+                )
 
+        return s
 
-   
+    @staticmethod
+    def md_csv_headcomma_blank():
+        return ',,,,,,,'
+
+    @staticmethod
+    def gen_csv_header():
+        s = '代码,报告期,报告期类型,公布日期,预告类型代码,预告类型'
+        s = s + ',净利润下限,净利润上限,去年同期净利润,净利润变动幅度下限,净利润变动幅度上限,预告文本'
+        s = s + ',公布日起第1天交易日,标的开盘,标的收盘,标的昨收,基准开盘,基准收盘,基准昨收' 
+        s = s + ',公布日起第5天交易日,标的开盘,标的收盘,标的昨收,基准开盘,基准收盘,基准昨收' 
+        s = s + ',公布日起第10天交易日,标的开盘,标的收盘,标的昨收,基准开盘,基准收盘,基准昨收' 
+        s = s + ',公布日起第20天交易日,标的开盘,标的收盘,标的昨收,基准开盘,基准收盘,基准昨收' 
+        return s
+
+    # 代码，报告期，报告期类型，公布日期，预告类型代码，预告类型
+    #     ，净利润下限，净利润上限，去年同期净利润，净利润变动幅度下限，净利润变动幅度上限，预告文本
+    #     , 公布日起第1天交易日,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 
+    #     , 公布日起第5天交易日,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 
+    #     , 公布日起第10天交易日,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 
+    #     , 公布日起第20天交易日,标的开盘，标的收盘,标的昨收，基准开盘，基准收盘，基准昨收 
+    def to_csv_str(self):
+        s = ''
+        s = s + "%s,%s,%s,%s,%d,%s" % (self.code, self.end_date,self.report_type, self.pub_date,self.type_id,self.forcast_type )
+
+        s = s + ",%s,%s,%s,%s,%s,%s" % (
+                util.nullable_float( self.profit_min )
+                ,util.nullable_float( self.profit_max )
+                ,util.nullable_float( self.profit_last )
+                ,util.nullable_float( self.profit_ratio_min )
+                ,util.nullable_float( self.profit_ratio_max )
+                ,self.content.replace(',','，')
+                )
+
+        for i in range(4):
+            if i< len(self.md_from_pub):
+                s = s +   ForcastInfo.md_csv_headcomma(self.md_from_pub[i])
+            else:
+                s = s + ForcastInfo.md_csv_headcomma_blank()
+
+        return s       
+ 

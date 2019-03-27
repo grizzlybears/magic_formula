@@ -735,7 +735,21 @@ def sum_forcast(engine, start_year, end_year ):
     for r in forcast_records:
         check_1_forcast( conn, r)
 
-    #generate_forcast_csv( forcast_records, "forcast_research" )
+    generate_forcast_csv( forcast_records, "forcast_research" )
+
+def generate_forcast_csv( records, filename ):
+    fullname = "%s/%s.csv" % (data_struct.WORKING_DIR, filename)
+    #the_file = io.open( filename, "w", encoding='utf-8')
+    #the_file.close()
+    #
+    header = data_struct.ForcastInfo.gen_csv_header()
+
+    with open( fullname, "w")  as f:
+        f.write("%s\n" %  header  )
+
+        for r in records:
+            f.write("%s\n" % r.to_csv_str() )
+ 
 
 def check_1_forcast(conn, forcast):
  
