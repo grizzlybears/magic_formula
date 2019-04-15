@@ -51,6 +51,65 @@ def get_trade_days( yyyy):
     return alltday
 
 
+# 获得指定股票指定年度的‘价值投资向’的财务数据集
+def get_annual_value_indicator(sec_code , statYYYY):
+    q = jq.query(
+          jq.valuation.market_cap  #市值
+          ,jq.balance.total_assets  #总资产
+          ,jq.balance.good_will     #商誉  其实可疑的项目还有很多，比如无形资产，应收帐款，在建工程，库存 ...
+          ,jq.balance.total_current_assets #流动资产
+          ,jq.balance.total_liability  #总负债
+          ,jq.balance.total_current_liability #流动负债
+          ,jq.cash_flow.net_operate_cash_flow  # 经营活动产生的现金流量净额(元) 
+          ,jq.cash_flow.net_invest_cash_flow  # 投资活动产生的现金流量净额(元)
+          ,jq.income.net_profit      #净利润
+          ,jq.income.np_parent_company_owners  # 归属于母公司股东的净利润(元)
+          ,jq.income.basic_eps  #基本每股收益(元)
+          ,jq.indicator.adjusted_profit   # 扣除非经常损益后的净利润(元)
+          ,jq.indicator.gross_profit_margin  #销售毛利率(%)
+          ).filter(
+                  jq.valuation.code == sec_code,
+                  jq.balance.code == sec_code,
+                  jq.cash_flow.code == sec_code,
+                  jq.income.code == sec_code,
+                  jq.indicator.code == sec_code,
+                  )
+    
+    ret = jq.get_fundamentals(q, statDate= statYYYY)
+
+    if ret is None or len(ret) == 0:
+        print "WARN: %s 于 %s 的财务指标没查到 " % (sec_code , statYYYY  )
+    return ret
+
+
+# 获得指定股票指定年度的财务指标数据
+def get_annual_indicator(sec_code , statYYYY):
+    q = jq.query(
+          jq.indicator  
+          ).filter(
+                  jq.indicator.code == sec_code,
+                  )
+
+    ret = jq.get_fundamentals(q, statDate= statYYYY)
+
+    if ret is None or len(ret) == 0:
+        print "WARN: %s 于 %s 的财务指标没查到 " % (sec_code , statYYYY  )
+    return ret
+
+
+# 获得指定股票指定年度的现金流表
+def get_annual_cashflow(sec_code , statYYYY):
+    q = jq.query(
+          jq.cash_flow 
+          ).filter(
+                  jq.cash_flow.code == sec_code,
+                  )
+
+    ret = jq.get_fundamentals(q, statDate= statYYYY)
+
+    if ret is None or len(ret) == 0:
+        print "WARN: %s 于 %s 的现金流表没查到 " % (sec_code , statYYYY  )
+    return ret
 
 
 # 获得指定股票指定年度的负债表

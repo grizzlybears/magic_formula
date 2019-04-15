@@ -1193,10 +1193,15 @@ def do_some_experiment(engine):
     
     #test_parsing_xrxd()
 
-    df = data_fetcher.get_forcast_by_year( 2017)  
+    #df = data_fetcher.get_forcast_by_year( 2017)  
     #util.print_df_all(df)
-    db_operator.save_forcast_df_to_db( engine, df)
-
+    #db_operator.save_forcast_df_to_db( engine, df)
+ 
+    df =  data_fetcher.get_annual_value_indicator('600030.XSHG', '2005' ) 
+    #df =  data_fetcher.get_annual_indicator('600030.XSHG', '2005' ) 
+    #df =  data_fetcher.get_annual_cashflow('600030.XSHG', '2005' ) 
+    #df =  data_fetcher.get_annual_balancesheet('600030.XSHG', '2005'  ) 
+    util.print_df_all(df)
    
     pass
     
