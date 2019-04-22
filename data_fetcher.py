@@ -54,7 +54,9 @@ def get_trade_days( yyyy):
 # 获得指定股票指定年度的‘价值投资向’的财务数据集
 def get_annual_value_indicator(sec_code , statYYYY):
     q = jq.query(
-          jq.valuation.market_cap  #市值
+          jq.valuation.code
+          ,jq.indicator.statDate
+          ,jq.valuation.market_cap  #市值
           ,jq.balance.total_assets  #总资产
           ,jq.balance.good_will     #商誉  其实可疑的项目还有很多，比如无形资产，应收帐款，在建工程，库存 ...
           ,jq.balance.total_current_assets #流动资产

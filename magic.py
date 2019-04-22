@@ -1202,6 +1202,12 @@ def do_some_experiment(engine):
     #df =  data_fetcher.get_annual_cashflow('600030.XSHG', '2005' ) 
     #df =  data_fetcher.get_annual_balancesheet('600030.XSHG', '2005'  ) 
     util.print_df_all(df)
+
+    row_num = len(df.index)
+
+    conn = engine.connect()
+    for i in range(row_num):
+        db_operator.db_save_fundamentals( conn, df.iloc[i] )
    
     pass
     

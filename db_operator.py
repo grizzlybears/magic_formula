@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS "Fundamentals" (
     net_invest_cash_flow   FLOAT,
     cash_equivalent_increase  FLOAT,
 
-    price_after_pub FLOAT, 
+    ref_t_day TEXT, 
     industry  TEXT,
     PRIMARY KEY( code, stat_date)
     );
@@ -1472,5 +1472,34 @@ order by x.code, x.end_date
         tr_list.append(tr)
 
     return tr_list
+
+def db_save_fundamentals(conn, df_row):
+    
+    global s_metadata 
+
+    T_Fundamentals = s_metadata.tables['Fundamentals']
+
+    # entry 来自于  db_fetch_stock_statements
+
+    ins = T_Fundamentals.insert().values( \
+            code =  df_row["code"]
+            , stat_date =  df_row["statDate"]
+            , market_cap =           df_row["market_cap"]
+            , total_assets  =            df_row["total_assets"] 
+            , good_will =                df_row["good_will"]
+            , total_current_assets =     df_row["total_current_assets"]
+            , total_liability =          df_row["total_liability"]
+            , total_current_liability =  df_row["total_current_liability"]
+            , net_profit =               df_row["net_profit"] 
+            , np_parent_company_owners=  df_row["np_parent_company_owners"]
+            , adjusted_profit =          df_row["adjusted_profit"]
+            , basic_eps =                df_row["basic_eps"]
+            , gross_profit_margin =      df_row["gross_profit_margin"]
+            , net_operate_cash_flow =    df_row["net_operate_cash_flow"]
+            , net_invest_cash_flow =     df_row["net_invest_cash_flow"]
+            , cash_equivalent_increase = df_row["cash_equivalent_increase"]
+    )
+
+    r = conn.execute( ins )
 
 
