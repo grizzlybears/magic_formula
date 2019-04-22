@@ -62,6 +62,7 @@ def get_annual_value_indicator(sec_code , statYYYY):
           ,jq.balance.total_current_liability #流动负债
           ,jq.cash_flow.net_operate_cash_flow  # 经营活动产生的现金流量净额(元) 
           ,jq.cash_flow.net_invest_cash_flow  # 投资活动产生的现金流量净额(元)
+          ,jq.cash_flow.cash_equivalent_increase  # 现金及现金等价物净增加额(元)
           ,jq.income.net_profit      #净利润
           ,jq.income.np_parent_company_owners  # 归属于母公司股东的净利润(元)
           ,jq.income.basic_eps  #基本每股收益(元)

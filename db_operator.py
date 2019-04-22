@@ -41,6 +41,36 @@ def get_db_engine():
 
     return engine 
 
+
+def create_fundamental_table(conn):
+    sql= '''
+CREATE TABLE IF NOT EXISTS "Fundamentals" (
+    code TEXT, 
+    stat_date TEXT,
+    market_cap FLOAT, 
+    total_assets FLOAT,
+    good_will    FLOAT,
+    total_current_assets   FLOAT,
+    total_liability  FLOAT,
+    total_current_liability FLOAT,
+    net_profit      FLOAT,
+    np_parent_company_owners  FLOAT,
+    adjusted_profit    FLOAT,
+    basic_eps    FLOAT,
+    gross_profit_margin  FLOAT,
+    net_operate_cash_flow  FLOAT,
+    net_invest_cash_flow   FLOAT,
+    cash_equivalent_increase  FLOAT,
+
+    price_after_pub FLOAT, 
+    industry  TEXT,
+    PRIMARY KEY( code, stat_date)
+    );
+    '''
+    
+    conn.execute( sql) 
+
+
 def create_valuation_table(conn):
     sql= '''
 CREATE TABLE IF NOT EXISTS "Valuation" (
@@ -444,6 +474,8 @@ def get_db_conn():
     create_XrXd_table(conn)
 
     create_forcast_table(conn)
+
+    create_fundamental_table(conn)
 
     conn.commit()
 

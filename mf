@@ -23,6 +23,7 @@ import rotate
 import kline_downloader
 import broker_pb_policy
 import xrxd_research
+import fundamental_research
 
 
 MY_NAME='mf'
