@@ -1479,8 +1479,6 @@ def db_save_fundamentals(conn, df_row):
 
     T_Fundamentals = s_metadata.tables['Fundamentals']
 
-    # entry 来自于  db_fetch_stock_statements
-
     ins = T_Fundamentals.insert().values( \
             code =  df_row["code"]
             , stat_date =  df_row["statDate"]
@@ -1501,5 +1499,30 @@ def db_save_fundamentals(conn, df_row):
     )
 
     r = conn.execute( ins )
+
+def db_save_annual_funda(engine, stat_date, df ):
+
+    conn = engine.connect()
+ 
+    trans = conn.begin()
+    try:
+        s = alch_text(
+            '''
+            delete from Fundamentals
+            where stat_date  = :t  
+            '''
+            )
+
+        conn.execute( s, t  =  stat_date)
+ 
+        row_num = len(df.index)
+        for i in range(row_num):
+            db_save_fundamentals( conn, df.iloc[i] )
+      
+        trans.commit()
+
+    except Exception as e:
+        trans.rollback()
+        raise e
 
 
