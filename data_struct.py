@@ -610,4 +610,46 @@ class ForcastInfo:
                 s = s + ForcastInfo.md_csv_headcomma_blank()
 
         return s       
- 
+
+#需要从05年开始，每年的净利润，净资产，市值，自由现金流，毛利率
+#经营活动现金流量净额 - 投资活动现金流量净额 = 自由现金流
+#
+class FundaInfo:
+    #代码
+    code = ''
+
+    #报告期
+    stat_date = ''
+
+    market_cap   = 0.0             #市值(亿元)
+    total_assets = 0.0             #总资产(元)
+    total_liability         = 0.0  #总负债(元)
+    total_current_liability = 0.0  #流动负债(元)
+    net_operate_cash_flow   = 0.0  # 经营活动产生的现金流量净额(元) 
+    net_invest_cash_flow    = 0.0  # 投资活动产生的现金流量净额(元)
+    adjusted_profit         = 0.0  # 扣除非经常损益后的净利润(元)
+    gross_profit_margin     = 0.0  #销售毛利率(%)
+    
+    # 公告后行情
+    #[
+    #    [第几天,t_day,开盘，收盘,昨 ]
+    #    ...
+    #]
+    md_from_pub = []
+
+    def __init__(self):
+        self.code = ''
+        self.stat_date = ''
+
+        self.market_cap   = 0.0             #市值(亿元)
+        self.total_assets = 0.0             #总资产(元)
+        self.total_liability         = 0.0  #总负债(元)
+        self.total_current_liability = 0.0  #流动负债(元)
+        self.net_operate_cash_flow   = 0.0  # 经营活动产生的现金流量净额(元) 
+        self.net_invest_cash_flow    = 0.0  # 投资活动产生的现金流量净额(元)
+        self.adjusted_profit         = 0.0  # 扣除非经常损益后的净利润(元)
+        self.gross_profit_margin     = 0.0  #销售毛利率(%)
+     
+        self.md_from_pub = []
+    
+

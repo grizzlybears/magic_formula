@@ -114,6 +114,8 @@ def main():
   
     elif ('fetch_funda' == sub_command ):  # 下载基本面数据   fetch_funda [startyear] [endyear]
         return fundamental_research.handle_fetch_funda( sys.argv[2:], MY_NAME )
+    elif ('sum_funda' == sub_command ):  # 汇总基本面数据   sum_funda [startyear] [endyear]
+        return fundamental_research.handle_sum_funda( sys.argv[2:], MY_NAME )
  
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )

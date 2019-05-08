@@ -90,4 +90,56 @@ def fetch_1_year_funda(engine, year ):
     stat_date =  '%d-12-31' % year
     db_operator.db_save_annual_funda(engine,  stat_date, df )
 
+def handle_sum_funda( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
 
+        # get db engine
+        engine = db_operator.get_db_engine()
+        
+        start_year = 2005
+
+        i = len(argv)
+        now = datetime.now()
+        end_year = now.year - 1
+
+        if ( 0== i  ):
+            start_year = now.year - 1
+        else:
+            start_year = int(argv[0])
+            
+            if ( i >= 2 ):
+                end_year  = int(argv[1])
+
+        # JQ的数据从2005开始
+        if start_year < 2005:
+            print "开始年份必须不小于2005"
+            return 1
+
+        sum_funda(engine, start_year, end_year )
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        return 1 
+    finally:
+        pass
+
+    return 0
+
+
+def sum_funda(engine, start_year, end_year ):
+
+    start_d = "%s-01-01" % start_year
+    end_d   = "%s-12-31" % end_year 
+
+    conn = engine.connect()
+    records = db_operator.db_fetch_funda( conn, start_d, end_d)
+
+    #for r in records:
+    #    print r
+
+
+    # 1. 打印header行

@@ -535,4 +535,21 @@ def get_forcast_by_year( year ):
 
     return df
 
+def get_industry_stocks():
+    df = jq.get_industries(name='zjw')
+
+    industries = {}
+    row_num = len(df.index)
+    for i in range(row_num):
+        industry_code = df.index[i]
+        
+        industry_name = df.iloc[i]['name']
+
+        #print industry_code, industry_name 
+        
+        stocks = jq.get_industry_stocks(industry_code)
+      
+        industries[industry_code ] = (industry_name , stocks )
+
+    return industries 
 

@@ -1203,12 +1203,14 @@ def do_some_experiment(engine):
     
     
     #df =  data_fetcher.get_annual_value_indicator('600030.XSHG', '2005' ) 
-    df =  data_fetcher.get_annual_value_indicator2( '2005' ) 
+    #df =  data_fetcher.get_annual_value_indicator2( '2005' ) 
     
     #util.print_df_all(df)
-    db_operator.db_save_annual_funda(engine,  '2005-12-31', df )
+    #db_operator.db_save_annual_funda(engine,  '2005-12-31', df )
 
-   
+    #df = jq.get_industries(name='zjw')
+    #util.print_df_all(df) a
+    data_fetcher.get_industry_stocks()
     pass
     
     

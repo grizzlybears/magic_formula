@@ -1524,5 +1524,51 @@ def db_save_annual_funda(engine, stat_date, df ):
     except Exception as e:
         trans.rollback()
         raise e
+ 
+ 
+   
+# 返回数组:
+def db_fetch_funda(conn, start_d, end_d  ):
+    s = '''
+select code,  stat_date, market_cap, total_assets, total_liability, 
+       net_operate_cash_flow, net_invest_cash_flow, adjusted_profit, gross_profit_margin
+from Fundamentals x
+where
+    x.stat_date >= '%s' and x.stat_date <= '%s'
+order by x.code, x.stat_date
+            '''  % ( start_d , end_d )
+
+    r = conn.execute( alch_text(s) ).fetchall()
+
+    tr_list = []
+
+    for row in r:
+        #print row
+        tr = data_struct.FundaInfo ()
+
+        #代码
+        tr.code = row[0]
+
+        #报告期
+        tr.stat_date = row[1]
+
+        #市值(亿)
+        tr.market_cap = row[2]
+    
+        #总资产(元)
+        tr.total_assets = row[3] 
+        
+        #总负债(元)
+        tr.total_liability  = row[4]
+
+        tr.net_operate_cash_flow   = row[5]  # 经营活动产生的现金流量净额(元) 
+        tr.net_invest_cash_flow    = row[6]  # 投资活动产生的现金流量净额(元)
+        tr.adjusted_profit         = row[7]  # 扣除非经常损益后的净利润(元)
+        tr.gross_profit_margin     = row[8]  #销售毛利率(%)
+    
+
+        tr_list.append(tr)
+
+    return tr_list
 
 
