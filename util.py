@@ -186,4 +186,16 @@ def nullable_float(f):
     else:
         return ''
 
+def nullable_float2(f):
+    if f:
+        return "%.2f" % float(f)
+    else:
+        return ''
+
+
+def null_or_0(f):
+    if f is None:
+        return 0
+    else:
+        return f
 

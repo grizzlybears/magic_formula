@@ -51,45 +51,11 @@ def get_trade_days( yyyy):
     return alltday
 
 
-# 获得指定股票指定年度的‘价值投资向’的财务数据集
-def get_annual_value_indicator(sec_code , statYYYY):
-    q = jq.query(
-          jq.valuation.code
-          ,jq.indicator.statDate
-          ,jq.valuation.market_cap  #市值
-          ,jq.balance.total_assets  #总资产
-          ,jq.balance.good_will     #商誉  其实可疑的项目还有很多，比如无形资产，应收帐款，在建工程，库存 ...
-          ,jq.balance.total_current_assets #流动资产
-          ,jq.balance.total_liability  #总负债
-          ,jq.balance.total_current_liability #流动负债
-          ,jq.cash_flow.net_operate_cash_flow  # 经营活动产生的现金流量净额(元) 
-          ,jq.cash_flow.net_invest_cash_flow  # 投资活动产生的现金流量净额(元)
-          ,jq.cash_flow.cash_equivalent_increase  # 现金及现金等价物净增加额(元)
-          ,jq.income.net_profit      #净利润
-          ,jq.income.np_parent_company_owners  # 归属于母公司股东的净利润(元)
-          ,jq.income.basic_eps  #基本每股收益(元)
-          ,jq.indicator.adjusted_profit   # 扣除非经常损益后的净利润(元)
-          ,jq.indicator.gross_profit_margin  #销售毛利率(%)
-          ).filter(
-                  jq.valuation.code == sec_code,
-                  jq.balance.code == sec_code,
-                  jq.cash_flow.code == sec_code,
-                  jq.income.code == sec_code,
-                  jq.indicator.code == sec_code,
-                  )
-    
-    ret = jq.get_fundamentals(q, statDate= statYYYY)
-
-    if ret is None or len(ret) == 0:
-        print "WARN: %s 于 %s 的财务指标没查到 " % (sec_code , statYYYY  )
-    return ret
-
 # 获得指定年度的‘价值投资向’的财务数据集
 def get_annual_value_indicator2( statYYYY):
     q = jq.query(
-          jq.valuation.code
+          jq.indicator.code
           ,jq.indicator.statDate
-          ,jq.valuation.market_cap  #市值(亿元)
           ,jq.balance.total_assets  #总资产(元)
           ,jq.balance.good_will     #商誉 (元) 其实可疑的项目还有很多，比如无形资产，应收帐款，在建工程，库存 ...
           ,jq.balance.total_current_assets #流动资产(元)
@@ -104,12 +70,11 @@ def get_annual_value_indicator2( statYYYY):
           ,jq.indicator.adjusted_profit   # 扣除非经常损益后的净利润(元)
           ,jq.indicator.gross_profit_margin  #销售毛利率(%)
           ).filter(
-                  jq.valuation.code == jq.indicator.code,
-                  jq.valuation.code == jq.balance.code ,
-                  jq.valuation.code == jq.cash_flow.code,
-                  jq.valuation.code == jq.income.code
+                  jq.indicator.code == jq.balance.code ,
+                  jq.indicator.code == jq.cash_flow.code,
+                  jq.indicator.code == jq.income.code
           ).order_by(
-                     jq.valuation.code
+                     jq.indicator.code
           )
     
     ret = jq.get_fundamentals(q, statDate= statYYYY)
@@ -538,7 +503,8 @@ def get_forcast_by_year( year ):
 def get_industry_stocks():
     df = jq.get_industries(name='zjw')
 
-    industries = {}
+    s2i = {}
+
     row_num = len(df.index)
     for i in range(row_num):
         industry_code = df.index[i]
@@ -548,8 +514,13 @@ def get_industry_stocks():
         #print industry_code, industry_name 
         
         stocks = jq.get_industry_stocks(industry_code)
-      
-        industries[industry_code ] = (industry_name , stocks )
 
-    return industries 
+        for stock_code in stocks:
+            if stock_code in s2i:
+                s2i[stock_code].append(industry_name)
+            else:
+                s2i[stock_code] = [industry_name]
+      
+
+    return s2i
 

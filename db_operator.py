@@ -47,7 +47,6 @@ def create_fundamental_table(conn):
 CREATE TABLE IF NOT EXISTS "Fundamentals" (
     code TEXT, 
     stat_date TEXT,
-    market_cap FLOAT, 
     total_assets FLOAT,
     good_will    FLOAT,
     total_current_assets   FLOAT,
@@ -1482,7 +1481,6 @@ def db_save_fundamentals(conn, df_row):
     ins = T_Fundamentals.insert().values( \
             code =  df_row["code"]
             , stat_date =  df_row["statDate"]
-            , market_cap =           df_row["market_cap"]
             , total_assets  =            df_row["total_assets"] 
             , good_will =                df_row["good_will"]
             , total_current_assets =     df_row["total_current_assets"]
@@ -1530,7 +1528,7 @@ def db_save_annual_funda(engine, stat_date, df ):
 # 返回数组:
 def db_fetch_funda(conn, start_d, end_d  ):
     s = '''
-select code,  stat_date, market_cap, total_assets, total_liability, 
+select code,  stat_date, total_assets, total_liability, 
        net_operate_cash_flow, net_invest_cash_flow, adjusted_profit, gross_profit_margin
 from Fundamentals x
 where
@@ -1552,19 +1550,16 @@ order by x.code, x.stat_date
         #报告期
         tr.stat_date = row[1]
 
-        #市值(亿)
-        tr.market_cap = row[2]
-    
         #总资产(元)
-        tr.total_assets = row[3] 
+        tr.total_assets = row[2] 
         
         #总负债(元)
-        tr.total_liability  = row[4]
+        tr.total_liability  = row[3]
 
-        tr.net_operate_cash_flow   = row[5]  # 经营活动产生的现金流量净额(元) 
-        tr.net_invest_cash_flow    = row[6]  # 投资活动产生的现金流量净额(元)
-        tr.adjusted_profit         = row[7]  # 扣除非经常损益后的净利润(元)
-        tr.gross_profit_margin     = row[8]  #销售毛利率(%)
+        tr.net_operate_cash_flow   = util.null_or_0(row[4])  # 经营活动产生的现金流量净额(元) 
+        tr.net_invest_cash_flow    = util.null_or_0(row[5])  # 投资活动产生的现金流量净额(元)
+        tr.adjusted_profit         = util.null_or_0(row[6])  # 扣除非经常损益后的净利润(元)
+        tr.gross_profit_margin     = util.null_or_0(row[7])  #销售毛利率(%)
     
 
         tr_list.append(tr)

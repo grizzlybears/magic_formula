@@ -135,11 +135,141 @@ def sum_funda(engine, start_year, end_year ):
     start_d = "%s-01-01" % start_year
     end_d   = "%s-12-31" % end_year 
 
+    print "汇总基本面数据 %s ~ %s" %(start_year, end_year)
     conn = engine.connect()
     records = db_operator.db_fetch_funda( conn, start_d, end_d)
 
-    #for r in records:
-    #    print r
+    for r in records:
+        check_1_funda(conn, r)
+
+    fullname = "%s/fundamentals.csv" % (data_struct.WORKING_DIR,)
+
+    s2i = data_fetcher.get_industry_stocks()
+
+    year_num = end_year - start_year + 1
+
+    with open( fullname, "w")  as f:
+        # 1. 打印header行
+
+        f.write("代码,名称,行业"  )
+        y = start_year
+        while y <= end_year:
+            f.write(",扣非净利润(万)%d,净资产(万)%d,自由现金流(万)%d,毛利率%d,参考交易日%d,市值(亿)%d,收盘价%d" 
+                    % ( y, y, y, y
+                        , y, y, y )
+                    )
+            y = y + 1
+
+        f.write("\n")
+
+        last_code = ''
+        last_code_year_printed = year_num
+        for r in records:
+
+            if r.code != last_code:
+                # 一个新的code
+
+                # 首先结束上一行(如果中途退市，或者某些时候年报延期，那么会不满一行)
+                if last_code != '':
+                    for dummy in range(year_num - last_code_year_printed):
+                        f.write(",,,,,,,") # 一年七个列
+                
+                    f.write("\n")
+                    f.flush()
+                
+                # 新行开始
+                last_code_year_printed = 0
+                last_code = r.code
 
 
-    # 1. 打印header行
+                # 2. 打印行首固定列
+                print_fixxed_cols_in_row_begin(f, r, s2i)
+
+                # 如果该code第一年不是 start_year，需要酌情偏移
+                y = int(r.stat_date[0:4])
+                for dummy in range( y - start_year):
+                    f.write(",,,,,,,") # 一年七个列
+                    last_code_year_printed = last_code_year_printed  + 1
+            
+
+            # 3. 循环打印每年的数据列
+            #f.write("扣非净利润(万)%d,净资产(万)%d,自由现金流(万)%d,毛利率%d,参考交易日%d,市值(亿)%d,收盘价%d\n" 
+            #print r.stat_date, r.net_operate_cash_flow , r.net_invest_cash_flow
+            f.write(",%s,%s,%s,%s,%s,%s,%s" % (
+                     util.nullable_float2(r.adjusted_profit / 1000)
+                    , util.nullable_float2((r.total_assets - r.total_liability ) / 10000)
+                    , util.nullable_float2((r.net_operate_cash_flow - r.net_invest_cash_flow) / 10000)
+                    , util.nullable_float2(r.gross_profit_margin)
+                    , r.ref_t_day 
+                    , util.nullable_float2(r.market_cap )
+                    , util.nullable_float2(r.close_price)
+                    )
+                    )
+            last_code_year_printed = last_code_year_printed  + 1
+
+        # 补完最后一行    
+        for dummy in range(year_num - last_code_year_printed):
+            f.write(",,,,,,,") # 一年七个列
+                
+        f.write("\n")
+
+#  打印行首固定列
+#  三列两个‘,’  以后的列都以‘,’开头
+def    print_fixxed_cols_in_row_begin(f, r, s2i ):
+    
+    if r.code in s2i:
+        ind = ""
+        first = 1
+        for i in s2i[r.code]:
+            if first:
+                ind = i
+                first = 0
+            else:
+                ind = ind + "|%s" % i
+    else:
+        ind = '未知'
+
+    cols = "%s,%s,%s" % (r.code, data_fetcher.get_code_name(r.code), ind )
+
+    f.write(cols)
+    print cols
+
+def check_1_funda(conn, r):
+    code      = r.code
+    stat_date = r.stat_date 
+
+    next_year = int(stat_date[0:4]) + 1
+    target_date = '%s-4-30' % next_year
+
+    dt_start = datetime.strptime(target_date ,'%Y-%m-%d').date()
+
+    md_df = data_fetcher.get_daily_line_n(code , dt_start, 5)
+
+    l = len(md_df.index)
+    if 0 == l:
+        print "WARN! %s 于%s 行情无法获取，只抓取该日可见的市值" % (code, target_date)
+        r.ref_t_day = target_date
+        r.close_price = None 
+        
+        val = data_fetcher.get_valuation(code , target_date )
+        if  val is None:
+            r.market_cap = None
+        else:
+            r.market_cap  = val['market_cap'][0]
+
+        #print code, val['market_cap'][0]
+        return 
+
+    t_day = md_df.index[0]
+    close_price = md_df['close'][0]
+
+    r.ref_t_day   = str(t_day)[0:10]
+    r.close_price = close_price 
+
+    val = data_fetcher.get_valuation(code , t_day)
+    if  val is None:
+        r.market_cap = None
+    else:
+        r.market_cap  = val['market_cap'][0]
+
+       #print code, r.ref_t_day, r.close_price, r.market_cap 

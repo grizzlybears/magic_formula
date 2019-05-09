@@ -621,7 +621,10 @@ class FundaInfo:
     #报告期
     stat_date = ''
 
+    ref_t_day    = ''              #参考交易日
+    close_price  = 0.0             #前复权收盘价
     market_cap   = 0.0             #市值(亿元)
+
     total_assets = 0.0             #总资产(元)
     total_liability         = 0.0  #总负债(元)
     total_current_liability = 0.0  #流动负债(元)
@@ -630,18 +633,15 @@ class FundaInfo:
     adjusted_profit         = 0.0  # 扣除非经常损益后的净利润(元)
     gross_profit_margin     = 0.0  #销售毛利率(%)
     
-    # 公告后行情
-    #[
-    #    [第几天,t_day,开盘，收盘,昨 ]
-    #    ...
-    #]
-    md_from_pub = []
 
     def __init__(self):
         self.code = ''
         self.stat_date = ''
 
+        self.ref_t_day    = ''              #参考交易日
+        self.close_price  = 0.0             #前复权收盘价
         self.market_cap   = 0.0             #市值(亿元)
+
         self.total_assets = 0.0             #总资产(元)
         self.total_liability         = 0.0  #总负债(元)
         self.total_current_liability = 0.0  #流动负债(元)
@@ -650,6 +650,5 @@ class FundaInfo:
         self.adjusted_profit         = 0.0  # 扣除非经常损益后的净利润(元)
         self.gross_profit_margin     = 0.0  #销售毛利率(%)
      
-        self.md_from_pub = []
     
 
