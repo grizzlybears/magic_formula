@@ -1551,13 +1551,25 @@ order by x.code, x.stat_date
         tr.stat_date = row[1]
 
         #总资产(元)
-        tr.total_assets = row[2] 
+        tr.total_assets = row[2]
         
         #总负债(元)
         tr.total_liability  = row[3]
 
-        tr.net_operate_cash_flow   = util.null_or_0(row[4])  # 经营活动产生的现金流量净额(元) 
-        tr.net_invest_cash_flow    = util.null_or_0(row[5])  # 投资活动产生的现金流量净额(元)
+        if tr.total_assets is None or tr.total_liability is None :
+            tr.net_asset = None
+        else:
+            tr.net_asset = (tr.total_assets - tr.total_liability) /10000
+
+
+        tr.net_operate_cash_flow   = row[4]  # 经营活动产生的现金流量净额(元) 
+        tr.net_invest_cash_flow    = row[5]  # 投资活动产生的现金流量净额(元)
+        if tr.net_operate_cash_flow is None or tr.net_invest_cash_flow is None:
+            tr.free_cash_flow = None
+        else:
+            tr.free_cash_flow = (tr.net_operate_cash_flow - tr.net_invest_cash_flow) /10000
+
+
         tr.adjusted_profit         = util.null_or_0(row[6])  # 扣除非经常损益后的净利润(元)
         tr.gross_profit_margin     = util.null_or_0(row[7])  #销售毛利率(%)
     

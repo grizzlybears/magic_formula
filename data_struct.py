@@ -627,9 +627,11 @@ class FundaInfo:
 
     total_assets = 0.0             #总资产(元)
     total_liability         = 0.0  #总负债(元)
+    net_asset               = 0.0  #净资产(元) 计算列
     total_current_liability = 0.0  #流动负债(元)
     net_operate_cash_flow   = 0.0  # 经营活动产生的现金流量净额(元) 
     net_invest_cash_flow    = 0.0  # 投资活动产生的现金流量净额(元)
+    free_cash_flow          = 0.0  # 自由现金流(元) 计算列
     adjusted_profit         = 0.0  # 扣除非经常损益后的净利润(元)
     gross_profit_margin     = 0.0  #销售毛利率(%)
     
@@ -644,9 +646,11 @@ class FundaInfo:
 
         self.total_assets = 0.0             #总资产(元)
         self.total_liability         = 0.0  #总负债(元)
+        self.net_asset               = 0.0  #净资产(万) 计算列
         self.total_current_liability = 0.0  #流动负债(元)
         self.net_operate_cash_flow   = 0.0  # 经营活动产生的现金流量净额(元) 
         self.net_invest_cash_flow    = 0.0  # 投资活动产生的现金流量净额(元)
+        self.free_cash_flow          = 0.0  # 自由现金流(万) 计算列
         self.adjusted_profit         = 0.0  # 扣除非经常损益后的净利润(元)
         self.gross_profit_margin     = 0.0  #销售毛利率(%)
      

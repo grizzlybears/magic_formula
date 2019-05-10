@@ -197,9 +197,9 @@ def sum_funda(engine, start_year, end_year ):
             #print r.stat_date, r.net_operate_cash_flow , r.net_invest_cash_flow
             f.write(",%s,%s,%s,%s,%s,%s,%s" % (
                      util.nullable_float2(r.adjusted_profit / 1000)
-                    , util.nullable_float2((r.total_assets - r.total_liability ) / 10000)
-                    , util.nullable_float2((r.net_operate_cash_flow - r.net_invest_cash_flow) / 10000)
-                    , util.nullable_float2(r.gross_profit_margin)
+                    , util.nullable_float2(r.net_asset )
+                    , util.nullable_float2(r.free_cash_flow)
+                    , util.nullable_float2(r.gross_profit_margin )
                     , r.ref_t_day 
                     , util.nullable_float2(r.market_cap )
                     , util.nullable_float2(r.close_price)
