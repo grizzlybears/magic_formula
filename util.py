@@ -130,6 +130,30 @@ def sum_delta_r( his  ):
 
     return s 
 
+# 这样的数组 [ 
+#                    [交易日，收盘价, 前日收盘价, 涨幅], 
+#                    [交易日，收盘价, 前日收盘价, 涨幅], ... 
+#            ]
+# 求RSI
+def rsi( his  ):
+
+    if 0 == len(his):
+        return 0
+ 
+    s_up   = 0
+    s_down = 0
+    for entry in his:
+        #print entry
+        delta_r = entry[3]
+        if delta_r  > 0:
+            s_up = s_up  +  delta_r 
+        elif delta_r  <  0:
+            s_down = s_down - delta_r 
+
+    return s_up / (s_up + s_down) * 100
+
+
+
 # 取2D数组'a2d'中的第'i'列 ('i' start from 0)
 def column_of_a2d(a2d, i ):
     return [row[i] for row in a2d]

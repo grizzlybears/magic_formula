@@ -257,3 +257,60 @@ def extend_indices_add_pb_std( conn,  his_md, MA_Size1 = 5):
 
     return his_md
 
+
+# 输入数组his_md
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
+# 返回时，各‘指标’数组的末尾加上 ‘RSI’       
+def extend_indices_add_rsi( conn,  his_md,  MA_Size1 =5):
+
+    recent_mds = {}  # 代码==> 该代码最后几交易日的‘行情’  ** 跳过停牌日
+                   # 其中‘行情’ 是  [ 
+                   #                    [交易日，收盘价，前日收盘价, 涨幅], 
+                   #                    [交易日，收盘价，前日收盘价, 涨幅], ... 
+                   #                ]
+    md_prev_day = None
+
+    for md_that_day  in his_md:
+        
+        t_day   =  md_that_day[0]
+        mds     =  md_that_day[1]
+        indices =  md_that_day[2]
+
+        for code,md_of_the_code in mds.iteritems():
+
+            indi_of_the_code = indices[code]
+            
+            if md_prev_day is None or code not in  md_prev_day[1]  or code not in  recent_mds :
+                # 第一天              昨日行情里没有本code            ‘最近交易日’记录里没有本code
+
+                # 需要从外部获取本code最后N日记录
+                recent_memo = data_fetcher.get_his_until( code, t_day, MA_Size1)
+                recent_mds[code] = recent_memo 
+            else:
+                # 停牌的行情不加入 recent_mds
+                if not  md_of_the_code[4] : 
+                    recent_mds[code].append( [t_day, md_of_the_code[0], md_of_the_code[1], md_of_the_code[2]  ] )
+ 
+            if len(recent_mds[code]) > MA_Size1:
+                del recent_mds[code][0]
+
+            # 至此N日行情有了，开始计算RSI
+            n_his = recent_mds[code]
+        
+            rsi_n = util.rsi( n_his)
+
+            # 至此RSI有了
+
+            indi_of_the_code.append(rsi_n) 
+            
+        # 准备走向下一天
+        md_prev_day = md_that_day
+
+
+    return his_md
+
+
