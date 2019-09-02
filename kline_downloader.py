@@ -207,3 +207,40 @@ def handle_hha( argv, argv0 ):
 
     return 0
 
+# 处理 'dl' 子命令 -- 下载指定代码的日线  
+def handle_dl( argv, argv0 ): 
+    try:
+        # make sure DB exists
+        conn = db_operator.get_db_conn()
+        conn.close()
+
+        # get db engine
+        engine = db_operator.get_db_engine()
+
+        code = '000300.XSHG'
+
+        i = len(argv)
+        if ( 0 == i  ):
+            start_day = '2019-01-01'  
+        else:
+            start_day  = argv[0]
+
+            if ( i >= 2 ):
+                code  = argv[1]
+        
+        now = datetime.now()
+    
+        df_his = data_fetcher.get_daily_line( code ,  start_day , now)
+        db_operator.save_daily_line_to_db( engine, code , df_his) 
+
+    except  Exception as e:
+        (t, v, bt) = sys.exc_info()
+        traceback.print_exception(t, v, bt)
+        print
+        print e
+        return 1 
+    finally:
+        pass
+
+    return 0
+

@@ -24,7 +24,7 @@ import kline_downloader
 import broker_pb_policy
 import xrxd_research
 import fundamental_research
-
+import rk
 
 MY_NAME='mf'
 
@@ -117,6 +117,11 @@ def main():
     elif ('sum_funda' == sub_command ):  # 汇总基本面数据   sum_funda [startyear] [endyear]
         return fundamental_research.handle_sum_funda( sys.argv[2:], MY_NAME )
  
+    elif ('daily_line' == sub_command or 'dl' == sub_command):  # 下载指定代码的日线 dl [startday def '2019-01-01'] [code def '000300.XSHG']
+        return kline_downloader.handle_dl( sys.argv[2:], MY_NAME  )
+    elif ('rsi_kdj' == sub_command or 'rk' == sub_command):  # 对日线进行rsi_kdj分析 rk [startday def '2019-01-01'] 
+        return rk.handle_rk( sys.argv[2:], MY_NAME  )
+    
     else:
         print "\n无效的‘子命令’ -- %s\n" % ( sub_command, )
         print_usage()
