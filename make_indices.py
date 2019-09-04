@@ -274,6 +274,11 @@ def extend_indices_add_rsi( conn,  his_md,  MA_Size1 =5):
                    #                ]
     md_prev_day = None
 
+    code_2_last_sma_up        = {}  # 代码  ==> 该代码前日SMA(上涨)
+    code_2_last_sma_amplitude = {}  # 代码  ==> 该代码前日SMA(波动)
+
+    window_size = MA_Size1 * 8    #  *8 是经验参数，这样与通达信一致. 提前窗口太小会导致前几项有误差
+
     for md_that_day  in his_md:
         
         t_day   =  md_that_day[0]
@@ -288,7 +293,7 @@ def extend_indices_add_rsi( conn,  his_md,  MA_Size1 =5):
                 # 第一天              昨日行情里没有本code            ‘最近交易日’记录里没有本code
 
                 # 需要从外部获取本code最后N日记录
-                recent_memo = data_fetcher.get_his_until( code, t_day, MA_Size1)
+                recent_memo = data_fetcher.get_his_until( code, t_day, window_size )
                 recent_mds[code] = recent_memo 
             else:
                 # 停牌的行情不加入 recent_mds
@@ -296,17 +301,68 @@ def extend_indices_add_rsi( conn,  his_md,  MA_Size1 =5):
                     delta = md_of_the_code[0] - md_of_the_code[1] 
                     recent_mds[code].append( [t_day, md_of_the_code[0], md_of_the_code[1], delta  ] )
  
-            if len(recent_mds[code]) > MA_Size1:
+            if len(recent_mds[code]) > window_size:
                 del recent_mds[code][0]
 
             # 至此N日行情有了，开始计算RSI
-            n_his = recent_mds[code]
+            md_window  = recent_mds[code]
+            if code not in code_2_last_sma_up:
+                # 本code还没算过SMA, 需要先填补过往, 把md_window中的记录先算完
+                code_2_last_sma_up[code] = 0
+                code_2_last_sma_amplitude[code] = 0
+
+                for i,m in enumerate( md_window):
+                    
+                    #   [交易日，收盘价，前日收盘价, 涨幅]
+
+                    delta = m[3]
+                    if delta >= 0:
+                        up        = delta
+                        amplitude = delta 
+                    else:
+                        up = 0
+                        amplitude = - delta 
+
+                    sma_up = (up + code_2_last_sma_up[code] * (MA_Size1 -1) ) / MA_Size1 
+
+                    sma_amplitude = (amplitude  + code_2_last_sma_amplitude[code] * (MA_Size1 -1) ) / MA_Size1 
+
+                    # 更新‘前日SMA’
+                    code_2_last_sma_up[code] = sma_up
+                    code_2_last_sma_amplitude[code] = sma_amplitude 
+
+                    print m, sma_up, sma_amplitude,  sma_up /  sma_amplitude * 100
+
+                #过往记录走完，做一条rsi
+                rsi = code_2_last_sma_up[code] / code_2_last_sma_amplitude[code] * 100
+                indi_of_the_code.append(rsi) 
+
+                print 
+
+            else:
+                # 直接算当日RSI
+                assert(   t_day  == md_window[-1][0])
+
+                delta = md_of_the_code[0] - md_of_the_code[1]
+                
+                if delta >= 0:
+                    up        = delta
+                    amplitude = delta 
+                else:
+                    up = 0
+                    amplitude = - delta 
+
+                sma_up = (up + code_2_last_sma_up[code] * (MA_Size1 -1) ) / MA_Size1 
+                sma_amplitude = (amplitude + code_2_last_sma_amplitude[code] * (MA_Size1 -1) ) / MA_Size1
+
+                # 更新‘前日SMA’
+                code_2_last_sma_up[code] = sma_up
+                code_2_last_sma_amplitude[code] = sma_amplitude 
         
-            rsi_n = util.rsi( n_his)
-
-            # 至此RSI有了
-
-            indi_of_the_code.append(rsi_n) 
+                #过往记录走完，做一条rsi
+                rsi = sma_up / sma_amplitude * 100
+                indi_of_the_code.append(rsi) 
+                print t_day, md_of_the_code,  sma_up, sma_amplitude,  rsi
             
         # 准备走向下一天
         md_prev_day = md_that_day

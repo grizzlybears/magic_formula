@@ -108,12 +108,13 @@ def rk_ana(engine, start_day, end_day):
         
 
     #headers = ['交易日', 'RSI6', 'RSI12', 'RSI24']
-    headers = ['交易日', 'K', 'D', 'J']
+    headers = ['交易日', 'RSI6']
+    #headers = ['交易日', 'K', 'D', 'J']
     plotter.simple_generate_line_chart( headers, rsi_data)
 
 
-    csv_headers = ['交易日', '收盘', '前日收盘', '涨幅']
-    plotter.generate_csv( '行情', csv_headers, csv_data)
+    #csv_headers = ['交易日', '收盘', '前日收盘', '涨幅']
+    #plotter.generate_csv( '行情', csv_headers, csv_data)
 
 
 
@@ -127,10 +128,10 @@ def rk_ana(engine, start_day, end_day):
 def make_indices_by_rk( conn,  his_md):
     make_indices.add_blank_indices( conn,  his_md)
 
-    #make_indices.extend_indices_add_rsi (conn,  his_md, 6 )
+    make_indices.extend_indices_add_rsi (conn,  his_md, 6 )
     #make_indices.extend_indices_add_rsi (conn,  his_md, 12 )
     #make_indices.extend_indices_add_rsi (conn,  his_md, 24 )
     
-    make_indices.extend_indices_add_kdj (conn,  his_md, 9 )
+    #make_indices.extend_indices_add_kdj (conn,  his_md, 9 )
 
  
