@@ -1106,14 +1106,14 @@ limit %d
 #     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
 #     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
 #     ...
-# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志, 最高，最低]
 
 # 注：   由于成份会变化，无法‘对数化’
 
 def db_fetch_dailyline(conn, start_day ):
     
     s = '''
-select t_day, code, close, high_limit, pre_close, paused
+select t_day, code, close, high_limit, pre_close, paused, high, low 
 from DailyLine
 where t_day >=  '%s' 
 order by t_day asc, code asc 
@@ -1122,8 +1122,8 @@ order by t_day asc, code asc
 
     r = conn.execute( alch_text(s) ).fetchall()
 
-    # 交易日, 代码，收盘， 涨停价， 前日收盘， 停牌标志
-    # 0       1     2      3        4          5
+    # 交易日, 代码，收盘， 涨停价， 前日收盘， 停牌标志, 最高, 最低
+    # 0       1     2      3        4          5         6     7
 
 
     row_num = 0
@@ -1163,9 +1163,12 @@ order by t_day asc, code asc
             delta_r = 0
 
         paused = row[5]
+
+        high  = row[6]
+        low   = row[7]
             
         
-        md_of_1_sec  = [close, pre_close, delta_r, close_on_ceil, paused]   # 收盘价，前日收盘价, 涨幅， 涨停，停牌
+        md_of_1_sec  = [close, pre_close, delta_r, close_on_ceil, paused, high, low] # 收盘价，前日收盘价, 涨幅， 涨停，停牌, 最高, 最低
         md_of_1_day[code] = md_of_1_sec 
 
     

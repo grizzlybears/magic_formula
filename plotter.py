@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import io
 import os
-
+import csv
 import data_struct
 
 def generate_his_csv( code1, code2, logged_his):
@@ -12,6 +12,17 @@ def generate_his_csv( code1, code2, logged_his):
     writer = csv.writer(the_file)
     #writer.writerow ( fieldnames)
     writer.writerows ( logged_his)
+
+    the_file.close()
+ 
+def generate_csv( basename, header, data):
+    filename = "%s/%s.csv" % (data_struct.WORKING_DIR, basename)
+    #the_file = io.open( filename, "w", encoding='utf-8')
+    the_file = io.open( filename, "wb" )
+
+    writer = csv.writer(the_file)
+    writer.writerow ( header )
+    writer.writerows ( data)
 
     the_file.close()
     

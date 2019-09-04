@@ -73,7 +73,7 @@ def rk_ana(engine, start_day, end_day):
     #     T_day2,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
     #     T_day3,  {证券1:证券1的行情, 证券2:证券2的行情, ...   }
     #     ...
-    # 其中‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志]
+    # 其中‘行情’ 是  [收盘价，前日收盘，涨幅， 涨停标志，停牌标志, 最高，最低 ]
     his_md = db_operator.db_fetch_dailyline(conn, start_day )
 
 #  数组his_md扩充为
@@ -81,14 +81,15 @@ def rk_ana(engine, start_day, end_day):
 #     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
 #     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
 #     ...
-# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志, 最高，最低 ]
 # ‘指标’数组:  [RSK(2), RSK(4), RSK(8)  ] 
     make_indices_by_rk( conn,  his_md )
 
-    #util.bp( his_md)
+    util.bp( his_md)
 
     
     rsi_data = []
+    csv_data = []
     for   md_that_day in his_md:
         t_day   =  md_that_day[0]
         mds     =  md_that_day[1]
@@ -100,13 +101,19 @@ def rk_ana(engine, start_day, end_day):
         #print t_day,code,data
         entry=[ t_day]
         entry.extend( data)
-        
         rsi_data.append(entry)
 
-    headers = ['交易日', 'RSI2', 'RSI4', 'RSI6']
+        csv_entry = [t_day, mds[code][0], mds[code][1], mds[code][2]]
+        csv_data.append(csv_entry)
+        
+
+    #headers = ['交易日', 'RSI6', 'RSI12', 'RSI24']
+    headers = ['交易日', 'K', 'D', 'J']
     plotter.simple_generate_line_chart( headers, rsi_data)
 
 
+    csv_headers = ['交易日', '收盘', '前日收盘', '涨幅']
+    plotter.generate_csv( '行情', csv_headers, csv_data)
 
 
 
@@ -115,13 +122,15 @@ def rk_ana(engine, start_day, end_day):
 #     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
 #     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
 #     ...
-# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志]
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志, 最高，最低 ]
 # ‘指标’数组:  [RSK(2), RSK(4), RSK(8)  ]      
 def make_indices_by_rk( conn,  his_md):
     make_indices.add_blank_indices( conn,  his_md)
 
-    make_indices.extend_indices_add_rsi (conn,  his_md, 2 )
-    make_indices.extend_indices_add_rsi (conn,  his_md, 4 )
-    make_indices.extend_indices_add_rsi (conn,  his_md, 6 )
+    #make_indices.extend_indices_add_rsi (conn,  his_md, 6 )
+    #make_indices.extend_indices_add_rsi (conn,  his_md, 12 )
+    #make_indices.extend_indices_add_rsi (conn,  his_md, 24 )
+    
+    make_indices.extend_indices_add_kdj (conn,  his_md, 9 )
 
  

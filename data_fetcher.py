@@ -230,8 +230,8 @@ def get_daily_line_n(sec_code , t_start, howmany ):
 # 获得指定股票某天为之，最后N交易日的行情 
 
 # 返回这样的数组 [ 
-#                    [交易日，收盘价], 
-#                    [交易日，收盘价], ... 
+#                    [交易日，收盘价, 前日收盘，涨跌数值，最高，最低], 
+#                    [交易日，收盘价, 前日收盘，涨跌数值，最高，最低], ... 
 #                ]
 
 def get_his_until(sec_code , t_end, howmany ):
@@ -249,7 +249,7 @@ def get_his_until(sec_code , t_end, howmany ):
             , start_date= dt_start, end_date=t_end
             , frequency='daily'
                #  默认是None(表示[‘open’, ‘close’, ‘high’, ‘low’, ‘volume’, ‘money’]这几个标准字段)
-            , fields=['close', 'pre_close']
+            , fields=['close', 'pre_close', 'high', 'low']
             , skip_paused=True
             , fq='pre'
             )
@@ -271,13 +271,17 @@ def get_his_until(sec_code , t_end, howmany ):
         
         close = df['close'].iloc[loc ]
         pre_close  = df['pre_close'].iloc[loc ]
+     
+        delta = close - pre_close
+        #if pre_close is not None and pre_close != 0:
+        #    delta_r = (close - pre_close) / pre_close
+        #else:
+        #    delta_r = 0
         
-        if pre_close is not None and pre_close != 0:
-            delta_r = (close - pre_close) / pre_close
-        else:
-            delta_r = 0
-        
-        one_md = [  str(tdays[loc])[:10] , close , pre_close, delta_r ]
+        high = df['high'].iloc[loc ]
+        low  = df['low' ].iloc[loc ]
+
+        one_md = [  str(tdays[loc])[:10] , close , pre_close, delta , high, low ]
 
         mds.append(one_md)
 

@@ -217,8 +217,9 @@ def handle_dl( argv, argv0 ):
         # get db engine
         engine = db_operator.get_db_engine()
 
-        code = '000300.XSHG'
+        #code = '000300.XSHG'   # 沪深300
 
+        code = '000001.XSHG'   # 上证综指
         i = len(argv)
         if ( 0 == i  ):
             start_day = '2019-01-01'  

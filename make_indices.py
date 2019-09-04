@@ -293,7 +293,8 @@ def extend_indices_add_rsi( conn,  his_md,  MA_Size1 =5):
             else:
                 # 停牌的行情不加入 recent_mds
                 if not  md_of_the_code[4] : 
-                    recent_mds[code].append( [t_day, md_of_the_code[0], md_of_the_code[1], md_of_the_code[2]  ] )
+                    delta = md_of_the_code[0] - md_of_the_code[1] 
+                    recent_mds[code].append( [t_day, md_of_the_code[0], md_of_the_code[1], delta  ] )
  
             if len(recent_mds[code]) > MA_Size1:
                 del recent_mds[code][0]
@@ -306,6 +307,154 @@ def extend_indices_add_rsi( conn,  his_md,  MA_Size1 =5):
             # 至此RSI有了
 
             indi_of_the_code.append(rsi_n) 
+            
+        # 准备走向下一天
+        md_prev_day = md_that_day
+
+
+    return his_md
+
+
+# 输入数组his_md
+#     T_day1, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day2, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     T_day3, {证券1:证券1的行情, 证券2:证券2的行情, ... }, {证券1:证券1的指标, 证券2:证券2的指标, ... }
+#     ...
+# 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志，最高，最低]
+# 返回时，各‘指标’数组的末尾加上 ‘KDJ’       
+def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
+
+    recent_mds = {}  # 代码==> 该代码最后几交易日的‘行情’  ** 跳过停牌日
+                   # 其中‘行情’ 是  [ 
+                   #                    [交易日，收盘价，前日收盘价, 涨幅, 最高, 最低], 
+                   #                    [交易日，收盘价，前日收盘价, 涨幅，最高, 最低] , ... 
+                   #                ]
+    
+    recent_kdj = {}  # 代码==> 该代码最后几交易日的‘KDJ’  
+                   # 其中‘KDJ’ 是  [ 
+                   #                    [交易日，RSV, K, D, J ], 
+                   #                    [交易日，RSV, K, D, J ], ... 
+                   #                ]
+    code_2_last_K = {} # 代码 ==> 该代码前一日的K
+    code_2_last_D = {} # 代码 ==> 该代码前一日的D
+
+    md_prev_day = None
+
+    window_size = MA_Size1 + 18  #  (2/3) ^ 18 < 0.001
+
+    for md_that_day  in his_md:
+        
+        t_day   =  md_that_day[0]
+        mds     =  md_that_day[1]
+        indices =  md_that_day[2]
+
+        for code,md_of_the_code in mds.iteritems():
+
+            indi_of_the_code = indices[code]
+            
+            if md_prev_day is None or code not in  md_prev_day[1]  or code not in  recent_mds :
+                # 第一天              昨日行情里没有本code            ‘最近交易日’记录里没有本code
+
+                # 需要从外部获取本code最后N日记录
+                recent_memo = data_fetcher.get_his_until( code, t_day, window_size)
+                recent_mds[code] = recent_memo 
+
+            else:
+                # 停牌的行情不加入 recent_mds
+                if not  md_of_the_code[4] : 
+                    delta = md_of_the_code[0] - md_of_the_code[1] 
+                    high  = md_of_the_code[5]
+                    low   = md_of_the_code[6]
+                    recent_mds[code].append( [t_day, md_of_the_code[0], md_of_the_code[1], delta , high, low ] )
+ 
+            if len(recent_mds[code]) > window_size:
+                del recent_mds[code][0]
+
+            # 至此window_size个行情有了，开始计算KDJ 
+            
+            
+            md_window = recent_mds[code]
+            
+            if code not in recent_kdj:
+                # 本code还没算过KDJ, 需要先填补过往的 RSV值
+                last_K   = 50.0 
+                last_D   = 50.0 
+                recent_kdj[code] = []
+
+                # 计算RSV值，记入recent_kdj
+                for i,m in enumerate( md_window):
+                    if ( i < MA_Size1):
+                        # 不足N日
+                        his_window = md_window[0: i +1]
+                    else:
+                        # 够N日，滑动窗口
+                        his_window = md_window[ - MA_Size1 :]
+
+                    
+                    #                    [交易日，收盘价，前日收盘价, 涨幅, 最高, 最低], 
+                    #                                                       4     5
+                    # 最高
+                    #print his_window
+                    #print 
+
+                    high_in_window = max( util.column_of_a2d( his_window, 4 ))
+                    low_in_window  = min( util.column_of_a2d( his_window, 5 ))
+
+                    # 当日RSV
+                    rsv =  (m[1] - low_in_window) / (high_in_window - low_in_window) * 100
+                    
+                    K = last_K * 2 /3 + rsv / 3
+                    D = last_D * 2 / 3 + K /3
+                    J = K * 3 - D *2
+
+                    last_K = K
+                    last_D = D
+
+                    recent_kdj[code].append( [m[0], rsv, K,D,J  ]  ) 
+
+                    print [m[0], rsv, K,D,J  ]  
+                
+                last_kdj = recent_kdj[code][-1][2:5] # [2:5] ：去掉开头的" 日期,RSV"
+                indi_of_the_code.extend(last_kdj )
+                code_2_last_K[code] = last_kdj[0]
+                code_2_last_D[code] = last_kdj[1]
+
+            else:
+                #已经算过KDJ
+                last_K   = code_2_last_K[code]
+                last_D   = code_2_last_D[code]
+            
+                # 够N日，滑动窗口
+                his_window = md_window[ - MA_Size1 :]
+                
+                #                    [交易日，收盘价，前日收盘价, 涨幅, 最高, 最低], 
+                #                                                       4     5
+                # 最高
+                #print his_window
+                #print 
+
+                high_in_window = max( util.column_of_a2d( his_window, 4 ))
+                low_in_window  = min( util.column_of_a2d( his_window, 5 ))
+
+                #print md_of_the_code, his_window[-1]
+                assert(   t_day  == his_window[-1][0])
+
+                # 当日RSV
+                rsv =  ( md_of_the_code[0] - low_in_window) / (high_in_window - low_in_window) * 100
+                
+                #print t_day, last_K,last_D
+
+                K = last_K * 2 /3 + rsv / 3
+                D = last_D * 2 / 3 + K / 3
+                J = K * 3 - D *2
+                
+                code_2_last_K[code] = K
+                code_2_last_D[code] = D
+
+
+                print [t_day, rsv, K,D,J]
+ 
+                indi_of_the_code.extend( [ K,D,J  ]  ) 
             
         # 准备走向下一天
         md_prev_day = md_that_day
