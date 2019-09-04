@@ -4,6 +4,8 @@ import os
 import csv
 import data_struct
 
+CURVE_TYPE = 'none'  # 'none':折线  'function':圆滑线 
+
 def generate_his_csv( code1, code2, logged_his):
     filename = "%s/%s_%s.csv" % (data_struct.WORKING_DIR, code1, code2)
     #the_file = io.open( filename, "w", encoding='utf-8')
@@ -72,7 +74,7 @@ def draw_chart_full( the_file, chart_title, additional_options = ""):
     s = '''
         var options = {
           title: '$title$',
-          curveType: 'function',
+          curveType: '%s',
           legend: { position: 'bottom' }
           , height:550
           %s
@@ -85,7 +87,7 @@ def draw_chart_full( the_file, chart_title, additional_options = ""):
         chart1.draw(data1, options);
 
 
-        ''' % additional_options 
+        ''' % (CURVE_TYPE,  additional_options )
 
     the_file.write( 
             s.replace( 
@@ -98,13 +100,13 @@ def draw_chart_w_anno_full( the_file, chart_title, header , additional_options =
     s = '''
         var options = {
           title: '%s',
-          curveType: 'function',
+          curveType: '%s',
           legend: { position: 'bottom' }
           , height:550
           %s
         };
 
-        ''' % (chart_title, additional_options )
+        ''' % (chart_title, CURVE_TYPE, additional_options )
     the_file.write(s);
 
 
@@ -148,13 +150,13 @@ def draw_chart_w_anno_last_x( the_file, chart_title, header ,x, subvar , additio
     s = '''
         var options_%d = {
           title: '%s, last %d',
-          curveType: 'function',
+          curveType: '%s',
           legend: { position: 'bottom' }
           , height:550
           %s
         };
 
-        ''' % (subvar, chart_title, x, additional_options )
+        ''' % (subvar, chart_title, x, CURVE_TYPE, additional_options )
     the_file.write(s);
 
 
@@ -195,12 +197,12 @@ def draw_chart_last_x( the_file, chart_title, x , subvar , additional_options = 
     the_file.write( 
             '''var options_%d = { 
                 title: '%s, last %d', 
-                curveType: 'function', 
+                curveType: '%s', 
                 legend: { position: 'bottom' } , height:550
                 %s  
                 };\n
                 '''
-                % (subvar, chart_title, x , additional_options )
+                % (subvar, chart_title, x , CURVE_TYPE, additional_options )
                 )
 
     the_file.write("    var chart_%d = new google.visualization.LineChart(document.getElementById('curve_chart_%d'));\n" 

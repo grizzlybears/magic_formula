@@ -322,7 +322,7 @@ def extend_indices_add_rsi( conn,  his_md,  MA_Size1 =5):
 #     ...
 # 其中‘行情’ 是  [收盘价，前日收盘价, 涨幅， 涨停标志，停牌标志，最高，最低]
 # 返回时，各‘指标’数组的末尾加上 ‘KDJ’       
-def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
+def extend_indices_add_kdj( conn,  his_md,  MA_Size1 =5):
 
     recent_mds = {}  # 代码==> 该代码最后几交易日的‘行情’  ** 跳过停牌日
                    # 其中‘行情’ 是  [ 
@@ -340,7 +340,7 @@ def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
 
     md_prev_day = None
 
-    window_size = MA_Size1 + 18  #  (2/3) ^ 18 < 0.001
+    window_size = MA_Size1 + 36    #  (2/3) ^ 18 < 0.001
 
     for md_that_day  in his_md:
         
@@ -377,8 +377,8 @@ def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
             
             if code not in recent_kdj:
                 # 本code还没算过KDJ, 需要先填补过往的 RSV值
-                last_K   = 50.0 
-                last_D   = 50.0 
+                last_K   = 50
+                last_D   = 50
                 recent_kdj[code] = []
 
                 # 计算RSV值，记入recent_kdj
@@ -388,21 +388,21 @@ def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
                         his_window = md_window[0: i +1]
                     else:
                         # 够N日，滑动窗口
-                        his_window = md_window[ - MA_Size1 :]
-
+                        his_window = md_window[ i+ 1 - MA_Size1 : i+1 ]
                     
-                    #                    [交易日，收盘价，前日收盘价, 涨幅, 最高, 最低], 
-                    #                                                       4     5
-                    # 最高
-                    #print his_window
-                    #print 
+                    #   [交易日，收盘价，前日收盘价, 涨幅, 最高, 最低], 
+                    #                                      4     5
+                    #print m[0]
+                    #util.bp(his_window)
 
                     high_in_window = max( util.column_of_a2d( his_window, 4 ))
                     low_in_window  = min( util.column_of_a2d( his_window, 5 ))
 
                     # 当日RSV
                     rsv =  (m[1] - low_in_window) / (high_in_window - low_in_window) * 100
-                    
+                    #print m[0], m[1], low_in_window, high_in_window , rsv
+
+
                     K = last_K * 2 /3 + rsv / 3
                     D = last_D * 2 / 3 + K /3
                     J = K * 3 - D *2
@@ -412,8 +412,9 @@ def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
 
                     recent_kdj[code].append( [m[0], rsv, K,D,J  ]  ) 
 
-                    print [m[0], rsv, K,D,J  ]  
-                
+                    #print [m[0], rsv, K,D,J  ]  
+                    #print
+
                 last_kdj = recent_kdj[code][-1][2:5] # [2:5] ：去掉开头的" 日期,RSV"
                 indi_of_the_code.extend(last_kdj )
                 code_2_last_K[code] = last_kdj[0]
@@ -429,20 +430,14 @@ def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
                 
                 #                    [交易日，收盘价，前日收盘价, 涨幅, 最高, 最低], 
                 #                                                       4     5
-                # 最高
-                #print his_window
-                #print 
 
                 high_in_window = max( util.column_of_a2d( his_window, 4 ))
                 low_in_window  = min( util.column_of_a2d( his_window, 5 ))
 
-                #print md_of_the_code, his_window[-1]
                 assert(   t_day  == his_window[-1][0])
 
                 # 当日RSV
                 rsv =  ( md_of_the_code[0] - low_in_window) / (high_in_window - low_in_window) * 100
-                
-                #print t_day, last_K,last_D
 
                 K = last_K * 2 /3 + rsv / 3
                 D = last_D * 2 / 3 + K / 3
@@ -451,8 +446,7 @@ def extend_indices_add_kdj_old( conn,  his_md,  MA_Size1 =5):
                 code_2_last_K[code] = K
                 code_2_last_D[code] = D
 
-
-                print [t_day, rsv, K,D,J]
+                #print [t_day, rsv, K,D,J]
  
                 indi_of_the_code.extend( [ K,D,J  ]  ) 
             

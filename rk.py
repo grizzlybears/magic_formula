@@ -85,7 +85,7 @@ def rk_ana(engine, start_day, end_day):
 # ‘指标’数组:  [RSK(2), RSK(4), RSK(8)  ] 
     make_indices_by_rk( conn,  his_md )
 
-    util.bp( his_md)
+    #util.bp( his_md)
 
     
     rsi_data = []
